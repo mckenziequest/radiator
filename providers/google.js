@@ -24,9 +24,18 @@ async function getGoogle(address) {
   if (process.env.MOCK === '1') return mockGoogle(address);
   if (!KEY) return null; // not configured -> skip this source
 
+  // Normalize whatever the caller passed to just the street portion, so the
+  // query is clean whether the address arrived as "737 W Washington Blvd" or
+  // "737 W Washington Blvd, Chicago, IL 60661, USA".
+  const street = String(address)
+    .split(',')[0]
+    .replace(/\b(chicago|illinois|il|usa)\b/gi, '')
+    .replace(/\b\d{5}(-\d{4})?\b/g, '')
+    .trim();
+
   // Bias toward the apartment/building listing (which carries the reviews)
   // rather than the raw street-address point.
-  const query = `${address} apartments Chicago IL`;
+  const query = `${street} apartments Chicago IL`;
 
   const url =
     'https://maps.googleapis.com/maps/api/place/textsearch/json' +
