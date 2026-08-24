@@ -761,15 +761,28 @@ function fetchExt(b){const base=comBase();if(base===null||b.demo)return;const bi
 let _violCache={},_violPending={};
 function fetchViol(b){const base=comBase();if(base===null||b.demo)return;const bid=b.id;if(_violCache[bid]!==undefined||_violPending[bid])return;_violPending[bid]=true;
   fetch(base.replace(/\/+$/,'')+'/api/violations?address='+encodeURIComponent(b.addr)).then(x=>x.ok?x.json():Promise.reject('HTTP '+x.status)).then(j=>{_violCache[bid]=j;delete _violPending[bid];if(nav.view==='building'&&nav.id===bid)render();}).catch(e=>{_violCache[bid]={error:String(e)};delete _violPending[bid];});}
+let violSort='new',violSortFor=null,violShowAll=false,violShowAllFor=null;
+function setViolSort(v,bid){violSort=v;violSortFor=bid;render();}
+function toggleViolAll(bid){violShowAll=!(violShowAllFor===bid&&violShowAll);violShowAllFor=bid;render();}
 function violationsCard(b){if(b.demo)return '';const bid=b.id;fetchViol(b);const v=_violCache[bid];
   const wrap=inner=>`<div class="card"><div class="card-h"><span class="t">📋 Violation history</span></div><div class="card-b">${inner}</div></div>`;
   if(v===undefined)return wrap('<p class="small-note" style="padding:6px 0">Loading City of Chicago violation records…</p>');
   if(v.error||!v.violations||!v.violations.length)return wrap('<p class="small-note" style="padding:6px 0">No itemized violation records on file for this exact address in the City dataset.</p>');
   const cap=s=>{s=String(s||'').toLowerCase();return s.charAt(0).toUpperCase()+s.slice(1);};
   const clip=(s,n)=>{s=String(s||'');return s.length>n?s.slice(0,n-1)+'…':s;};
-  const shown=v.violations.slice(0,8);const more=v.violations.length-shown.length;
-  const row=x=>{const open=!/COMPLIED|CLOSED|NO ENTRY/i.test(x.status);return `<div style="padding:10px 0;border-bottom:1px solid var(--line)"><div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline"><span style="font-weight:650;font-size:13.5px;color:var(--ink)">${esc(cap(x.desc))}</span><span style="flex:none;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;${open?'background:#FBE9E7;color:#C0392B':'background:#E7F5EC;color:#2E7D4F'}">${open?'OPEN':'Resolved'}</span></div><div style="font-size:12px;color:var(--ink-soft);margin-top:3px">${esc(x.date||'')}${x.dept?' · '+esc(cap(x.dept)):''}</div>${x.detail?`<div style="font-size:12.5px;color:var(--ink-soft);margin-top:5px;line-height:1.45">${esc(clip(x.detail,180))}</div>`:''}</div>`;};
-  return `<div class="card"><div class="card-h"><span class="t">📋 Violation history (${v.count})</span><span class="small-note" style="color:var(--ink-faint)">${v.open} open · ${v.resolved} resolved</span></div><div class="card-b"><div>${shown.map(row).join('')}</div>${more>0?`<div class="src-note" style="margin-top:10px">+ ${more} older record${more===1?'':'s'} on file.</div>`:''}<div class="src-note" style="margin-top:8px">Source: City of Chicago Building Violations (dataset 22u3-xenr), looked up live by address.</div></div></div>`;}
+  const isOpen=x=>!/COMPLIED|CLOSED|NO ENTRY/i.test(x.status);
+  const srt=(violSortFor===bid)?violSort:'new';
+  let ordered=v.violations.slice();
+  if(srt==='old')ordered.sort((a,c)=>(a.date||'').localeCompare(c.date||''));
+  else if(srt==='open')ordered.sort((a,c)=>(isOpen(c)-isOpen(a))||((c.date||'').localeCompare(a.date||'')));
+  else ordered.sort((a,c)=>(c.date||'').localeCompare(a.date||'')); // newest
+  const chip=(k,label)=>`<button class="${srt===k?'on':''}" onclick="setViolSort('${k}','${bid}')">${label}</button>`;
+  const sortRow=`<div class="recency" style="margin-bottom:12px">${chip('new','Newest first')}${chip('old','Oldest first')}${chip('open','Open first')}</div>`;
+  const showAll=(violShowAllFor===bid&&violShowAll);
+  const shown=showAll?ordered:ordered.slice(0,8);const more=ordered.length-shown.length;
+  const row=x=>{const open=isOpen(x);return `<div style="padding:10px 0;border-bottom:1px solid var(--line)"><div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline"><span style="font-weight:650;font-size:13.5px;color:var(--ink)">${esc(cap(x.desc))}</span><span style="flex:none;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;${open?'background:#FBE9E7;color:#C0392B':'background:#E7F5EC;color:#2E7D4F'}">${open?'OPEN':'Resolved'}</span></div><div style="font-size:12px;color:var(--ink-soft);margin-top:3px">${esc(x.date||'')}${x.dept?' · '+esc(cap(x.dept)):''}</div>${x.detail?`<div style="font-size:12.5px;color:var(--ink-soft);margin-top:5px;line-height:1.45">${esc(clip(x.detail,180))}</div>`:''}</div>`;};
+  const toggle=(more>0||showAll)?`<div style="margin-top:12px"><button class="btn ghost sm" style="width:auto;display:inline-flex" onclick="toggleViolAll('${bid}')">${showAll?'Show fewer':'Show all '+ordered.length+' records'}</button></div>`:'';
+  return `<div class="card"><div class="card-h"><span class="t">📋 Violation history (${v.count})</span><span class="small-note" style="color:var(--ink-faint)">${v.open} open · ${v.resolved} resolved</span></div><div class="card-b">${sortRow}<div>${shown.map(row).join('')}</div>${toggle}<div class="src-note" style="margin-top:8px">Source: City of Chicago Building Violations (dataset 22u3-xenr), looked up live by address.</div></div></div>`;}
 function reviewsFor(bid){const base=isDemo()?DEMO_REVIEWS.concat(EXT_DEMO_REVIEWS).filter(r=>r.b===bid):comReviews(bid);return dedupById(base,S.reviews.filter(r=>r.b===bid));}
 function ratingOf(bid){if(_rCache[bid])return _rCache[bid];const rs=reviewsFor(bid);const r=rs.length?{avg:rs.reduce((a,x)=>a+x.overall,0)/rs.length,n:rs.length}:{avg:0,n:0};return _rCache[bid]=r;}
 function subAvgOf(bid){const rs=reviewsFor(bid);const o={};REVIEW_DIMS.forEach(d=>{const v=rs.map(r=>r.sub&&r.sub[d.k]).filter(x=>x>0);o[d.k]=v.length?v.reduce((a,b)=>a+b,0)/v.length:0;});return o;}
@@ -839,8 +852,8 @@ function postSignup(ctx){const el=document.getElementById('su-'+ctx);if(!el)retu
   toast('You\'re on the list — thanks! 🎉');render();
 }
 function aroundWebCard(name,isCompany,site){if(!name)return '';const L=webLinks(name,isCompany);
-  const btn=(href,label,sub,ic)=>`<a class="webbtn" href="${href}" target="_blank" rel="noopener noreferrer"><span class="wbi">${ic}</span><span class="wbtxt"><span class="wbt">${label}</span><span class="wbs">${sub}</span></span><span class="wbx">↗</span></a>`;
   const siteHost=(()=>{try{return site?new URL(site).hostname.replace(/^www\./,''):null;}catch(e){return null;}})();
+  const btn=(href,label,sub,ic)=>`<a class="webbtn" href="${href}" target="_blank" rel="noopener noreferrer"><span class="wbi">${ic}</span><span class="wbtxt"><span class="wbt">${label}</span><span class="wbs">${sub}</span></span><span class="wbx">↗</span></a>`;
   return `<div class="card"><div class="card-h"><span class="t">🌐 Around the web</span></div><div class="card-b">
     <p class="small-note" style="margin:0 0 12px">See what Chicago renters say about <b style="color:var(--ink)">${esc(name)}</b> elsewhere — live, in their own words. Each opens that site's real search in a new tab.</p>
     <div class="webbtns">
@@ -903,7 +916,7 @@ function urlFor(view,id){
   if(view==='building'){const b=bById(id);return '/building/'+id+(b&&b.addr?'/'+urlSlug(b.addr):'');}
   if(view==='landlord'){const b=bById(id);const pg=b&&b.pg;return pg?('/company/'+pg):('/company/'+id);}
   if(view==='neighborhood')return '/neighborhood/'+urlSlug(id||'');
-  if(['explore','map','compare','neighborhoods','tools','pricing','saved','guide','profile'].includes(view))return '/'+view;
+  if(['explore','map','compare','neighborhoods','tools','pricing','saved','guide','profile','terms','privacy','guidelines','moderate'].includes(view))return '/'+view;
   if(view==='write'||view==='issue')return '/'+view+(id?('/'+id):'');
   return '/';
 }
@@ -915,7 +928,7 @@ function setNavFromPath(path){
   if(seg==='building'){nav.view='building';nav.id=parts[1]||null;return;}
   if(seg==='company'){const pg=parts[1];const b=REAL.find(x=>String(x.pg)===String(pg));if(b){nav.view='landlord';nav.id=b.id;return;}nav.view='explore';nav.id=null;return;}
   if(seg==='neighborhood'){const s=parts[1]||'';const h=HOODS.find(x=>urlSlug(x)===s);nav.view=h?'neighborhood':'neighborhoods';nav.id=h||null;return;}
-  const known=['explore','map','compare','neighborhoods','tools','pricing','saved','guide','profile','write','issue'];
+  const known=['explore','map','compare','neighborhoods','tools','pricing','saved','guide','profile','write','issue','terms','privacy','guidelines','moderate'];
   if(known.includes(seg)){nav.view=seg;nav.id=parts[1]||null;return;}
   nav.view='home';nav.id=null;
 }
@@ -949,11 +962,11 @@ function render(){
   const inner = v==='home'?viewHome() : v==='building'?viewBuilding(nav.id) : v==='landlord'?viewLandlord(nav.id) : v==='write'?viewWrite(nav.id) : v==='issue'?viewIssue(nav.id)
     : v==='map'?viewMap() : v==='compare'?viewCompare() : v==='neighborhoods'?viewNeighborhoods() : v==='neighborhood'?viewNeighborhood(nav.id)
     : v==='tools'?viewTools() : v==='guide'?viewGuide() : v==='saved'?viewSaved() : v==='pricing'?viewPricing() : v==='profile'?viewProfile()
-    : v==='terms'?viewLegal('terms') : v==='privacy'?viewLegal('privacy') : v==='guidelines'?viewLegal('guidelines') : viewExplore();
+    : v==='terms'?viewLegal('terms') : v==='privacy'?viewLegal('privacy') : v==='guidelines'?viewLegal('guidelines') : v==='moderate'?viewModerate() : viewExplore();
   const isHome = v==='home';
   const banner = isHome?'' : isDemo()?`<div class="samplebanner demo">Showcase mode · fictional buildings &amp; sample reviews — switch to Live in Profile</div>`
     :`<div class="samplebanner live">Live City of Chicago building records · ${REAL.length} buildings · updated ${esc(CHI.generated||'')}</div>`;
-  const showBack = ['building','landlord','write','issue','neighborhood','guide','terms','privacy','guidelines'].includes(v);
+  const showBack = ['building','landlord','write','issue','neighborhood','guide','terms','privacy','guidelines','moderate'].includes(v);
   $('#app').innerHTML=`
     ${banner}
     <div class="shell">
@@ -1119,7 +1132,62 @@ function companyCard(c){const worst=Math.max(...c.buildings.map(riskOf));const b
     <div class="bcard-body"><div class="name">${esc(c.name)}</div><div class="addr">${c.buildings.length} building${c.buildings.length===1?'':'s'} on record</div>
     <div class="recline"><span class="flag ${RISK_CLASS[worst]}" style="display:inline-flex"><span class="dot"></span>${RISK_LABEL[worst]}</span></div>
     <div class="meta">${avg?`<span class="rating-pill">${avg.toFixed(1)} ${starsHTML(avg)}</span>`:`<span class="rating-pill" style="color:var(--ink-faint);font-weight:600">Management company</span>`}<span class="cmpbtn">View portfolio →</span></div></div></button>`;}
+/* ===== browse ALL property managers / property groups (Explore tab) ===== */
+let exploreType='buildings', coSortBy='rated';
+function setExploreType(v){exploreType=v;render();}
+function setCoSort(v){coSortBy=v;render();}
+function allGroups(){
+  if(isDemo()){const m={};DEMO.forEach(b=>{if(b.co)(m[b.co]=m[b.co]||[]).push(b);});return Object.keys(m).map(k=>({key:'co'+k,pg:null,name:k,named:true,buildings:m[k]}));}
+  const names=Object.assign({},COM.names||{},S.names||{});const idx=pgIndex();const out=[];
+  Object.keys(idx).forEach(pg=>{const bs=idx[pg];const nm=names['pg'+pg]||null;if(bs.length<2&&!nm)return;
+    out.push({key:'pg'+pg,pg,name:nm||('Property group #'+pg),named:!!nm,buildings:bs});});
+  return out;}
+function groupStats(c){if(c._st)return c._st;const bs=c.buildings;let open=0,fixed=0,rn=0,rsum=0,ssum=0,worst=0;
+  bs.forEach(b=>{open+=b.open||0;fixed+=b.fixed||0;const r=ratingOf(b.id);rn+=r.n;rsum+=r.avg*r.n;ssum+=scoreOf(b);const rk=riskOf(b);if(rk>worst)worst=rk;});
+  return c._st={open,fixed,worst,n:bs.length,rating:rn?rsum/rn:0,rn,score:Math.round(ssum/bs.length)};}
+function groupCard(c){const st=groupStats(c);const bid=c.buildings[0].id;const g=gradeOf(st.score);
+  return `<button class="bcard" style="text-align:left;cursor:pointer;border:none;width:100%;padding:0" onclick="go('landlord','${bid}')">
+    <div class="thumb" style="background:linear-gradient(135deg,#4C6FA5,#33507E);border:none;width:100%;display:flex;align-items:center;justify-content:center;position:relative"><span style="font-size:40px">🏢</span><div class="score-badge"><span class="scorechip"><span class="g ${gradeClass(g)}">${g}</span><span class="n">${st.score}<small>/100</small></span></span></div></div>
+    <div class="bcard-body"><div class="name">${esc(c.name)}</div><div class="addr">${st.n} building${st.n===1?'':'s'} · ${st.open} open violation${st.open===1?'':'s'}</div>
+    <div class="recline"><span class="flag ${RISK_CLASS[st.worst]}" style="display:inline-flex"><span class="dot"></span>${RISK_LABEL[st.worst]}</span></div>
+    <div class="meta">${st.rn?`<span class="rating-pill">${st.rating.toFixed(1)} ${starsHTML(st.rating)} <small>(${st.rn})</small></span>`:`<span class="rating-pill" style="color:var(--ink-faint);font-weight:600">No tenant reviews yet</span>`}<span class="cmpbtn">View portfolio →</span></div></div></button>`;}
+function exploreTabs(){return `<div class="recency" style="margin:0 0 14px;flex-wrap:wrap;gap:6px">
+    <button class="${exploreType==='buildings'?'on':''}" onclick="setExploreType('buildings')">🏘️ Apartment buildings</button>
+    <button class="${exploreType==='companies'?'on':''}" onclick="setExploreType('companies')">🏢 Property managers</button>
+  </div>`;}
+function viewExploreCompanies(){
+  let list=allGroups();
+  if(searchQ.trim()){const q=searchQ.toLowerCase();list=list.filter(c=>c.name.toLowerCase().includes(q)||('#'+(c.pg||'')).toLowerCase().includes(q));}
+  list.forEach(groupStats);
+  const by={
+    rated:(a,b)=>(b._st.rn?1:0)-(a._st.rn?1:0)||b._st.rating-a._st.rating||b._st.n-a._st.n,
+    lowrated:(a,b)=>(b._st.rn?1:0)-(a._st.rn?1:0)||a._st.rating-b._st.rating||b._st.n-a._st.n,
+    score:(a,b)=>b._st.score-a._st.score||b._st.n-a._st.n,
+    lowscore:(a,b)=>a._st.score-b._st.score||b._st.n-a._st.n,
+    size:(a,b)=>b._st.n-a._st.n,
+    risk:(a,b)=>b._st.worst-a._st.worst||b._st.open-a._st.open,
+    az:(a,b)=>a.name.localeCompare(b.name)
+  };
+  list.sort(by[coSortBy]||by.rated);
+  const shown=list.slice(0,RENDER_CAP);
+  return `<div class="filterbar">
+    <span class="selpill"><select onchange="setCoSort(this.value)">
+      <option value="rated"${coSortBy==='rated'?' selected':''}>Highest rated</option>
+      <option value="lowrated"${coSortBy==='lowrated'?' selected':''}>Lowest rated</option>
+      <option value="score"${coSortBy==='score'?' selected':''}>Best Radiator score</option>
+      <option value="lowscore"${coSortBy==='lowscore'?' selected':''}>Worst Radiator score</option>
+      <option value="size"${coSortBy==='size'?' selected':''}>Biggest portfolios</option>
+      <option value="risk"${coSortBy==='risk'?' selected':''}>Highest risk</option>
+      <option value="az"${coSortBy==='az'?' selected':''}>A–Z</option>
+    </select></span>
+  </div>
+  <div class="result-meta"><span class="count">${list.length.toLocaleString()} property manager${list.length===1?'':'s'}${list.length>RENDER_CAP?' · showing '+RENDER_CAP:''}</span></div>
+  ${shown.length?`<div class="bgrid">${shown.map(groupCard).join('')}</div>${list.length>RENDER_CAP?`<p class="small-note" style="text-align:center;margin-top:18px">Showing the top ${RENDER_CAP} of ${list.length.toLocaleString()} — narrow it with search.</p>`:''}`:`<div class="empty"><div class="em">🏢</div><div class="t">No property managers match</div><div class="d">Managers appear here from the City's property-group records — and get real names as renters add them on any building page.</div></div>`}
+  <div class="src-note" style="margin-top:14px">Portfolios come from City of Chicago code-enforcement property groups. Company names are added by renters — open a portfolio to name one.</div>`;}
 function viewExplore(){
+  if(exploreType==='companies'){return `<h1 class="page-t">Explore Chicago property managers</h1>
+  <p class="page-sub">${isDemo()?'Sample companies from the demo data.':'<b style="color:var(--ink)">Who actually runs the building?</b> Every City-recorded property group, ranked by tenant ratings, Radiator score, portfolio size, or risk.'}</p>
+  ${exploreTabs()}${viewExploreCompanies()}`;}
   let list=buildings();
   if(hoodFilter!=='all')list=list.filter(b=>b.hood===hoodFilter);
   if(riskFilter!=='all')list=list.filter(b=>RISK_CLASS[riskOf(b)]===riskFilter);
@@ -1133,6 +1201,7 @@ function viewExplore(){
   const hoodsForChips=isDemo()?[...new Set(DEMO.map(b=>b.hood))].sort():HOODS;
   return `<h1 class="page-t">Explore Chicago buildings</h1>
   <p class="page-sub">${isDemo()?'Fictional sample buildings to demonstrate the review experience.':'<b style="color:var(--ink)">Before you sign, check the Radiator.</b> Real tenant experiences, rent history, transit, and official city records for every Chicago building — search a name or address.'}</p>
+  ${exploreTabs()}
   <div class="filterbar">
     <span class="selpill ${hoodFilter!=='all'?'act':''}"><select onchange="setFilter('hood',this.value)"><option value="all">All neighborhoods</option>${hoodsForChips.map(h=>`<option value="${esc(h)}"${hoodFilter===h?' selected':''}>${esc(h)}</option>`).join('')}</select></span>
     <span class="selpill ${riskFilter!=='all'?'act':''}"><select onchange="setFilter('risk',this.value)"><option value="all">Any risk</option><option value="good"${riskFilter==='good'?' selected':''}>Good standing</option><option value="watch"${riskFilter==='watch'?' selected':''}>Watch list</option><option value="risk"${riskFilter==='risk'?' selected':''}>High risk</option></select></span>
@@ -1541,7 +1610,11 @@ function viewWrite(bid){const b=bid?bById(bid):null;
     ${pick}<input type="hidden" id="w-bid" value="${bid||''}">
     <div class="form-group"><div class="fg-t">🪪 Your residency</div>
       <div class="grid2"><div class="field" style="margin:0"><label for="w-status">You are a…</label><select id="w-status"><option value="current">Current tenant</option><option value="former">Former tenant</option></select></div>
-        <div class="field" style="margin:0"><label>Confirm your tenancy <span style="color:var(--ink-faint);font-weight:500">(optional)</span></label><label style="display:flex;gap:8px;align-items:flex-start;font-size:12.5px;color:var(--ink-soft)"><input type="checkbox" id="w-verify" style="width:17px;height:17px;margin-top:1px;accent-color:var(--heat)"><span>I confirm I actually lived or live at this address (shown as <b>self-reported</b>). A <b>✓ Verified</b> badge — where you upload a redacted lease we review privately and delete — is coming soon.</span></label></div></div>
+        <div class="field" style="margin:0"><label>Confirm your tenancy <span style="color:var(--ink-faint);font-weight:500">(optional)</span></label><label style="display:flex;gap:8px;align-items:flex-start;font-size:12.5px;color:var(--ink-soft)"><input type="checkbox" id="w-verify" style="width:17px;height:17px;margin-top:1px;accent-color:var(--heat)"><span>I confirm I actually lived or live at this address (shown as <b>self-reported</b>).</span></label></div></div>
+      <div class="field" style="margin:12px 0 0"><label>Get a <b style="color:var(--good)">✓ Verified</b> badge <span style="color:var(--ink-faint);font-weight:500">(optional)</span></label>
+        <label class="uploader" for="w-lease">🪪 Upload a lease to verify tenancy</label>
+        <input type="file" id="w-lease" accept="image/*,application/pdf" hidden onchange="addLease(this.files)">
+        <div id="w-lease-status" class="small-note" style="margin-top:6px">Black out anything you like first — you only need the address and your name. We review it privately, mark you <b>✓ Verified</b>, then <b>delete the file</b>. It's never shown publicly.</div></div>
       <div class="grid2" style="margin-top:12px"><div class="field" style="margin:0"><label for="w-in">Lived here since (year)</label><input type="text" id="w-in" placeholder="2023" maxlength="4" inputmode="numeric"></div><div class="field" style="margin:0"><label for="w-out">Until (year, blank if current)</label><input type="text" id="w-out" placeholder="2025" maxlength="7"></div></div>
     </div>
     <div class="field" style="margin:0"><label>Overall rating <span style="color:var(--risk)">*</span></label><div class="star-input" id="si-overall">${[1,2,3,4,5].map(i=>`<button type="button" onclick="setStar('overall',${i})">★</button>`).join('')}</div></div>
@@ -1570,7 +1643,52 @@ function viewWrite(bid){const b=bid?bById(bid):null;
     <button class="btn primary full" type="button" onclick="submitReview()">Post review &amp; unlock 30 days</button>
   </form></div></div><div style="height:20px"></div>`;
 }
-function initWriteForm(){draft={overall:0,sub:{},photos:[],unit:{pests:[],nearby:[],noiseSrc:[]},would:null,surprise:null};REVIEW_DIMS.forEach(d=>draft.sub[d.k]=0);prefillAddr='';}
+function initWriteForm(){draft={overall:0,sub:{},photos:[],unit:{pests:[],nearby:[],noiseSrc:[]},would:null,surprise:null,lease:null,leaseType:null};REVIEW_DIMS.forEach(d=>draft.sub[d.k]=0);prefillAddr='';}
+function addLease(files){const f=files&&files[0];if(!f)return;
+  if(f.type==='application/pdf'){const rd=new FileReader();rd.onload=()=>{if((rd.result||'').length>2000000){toast('That PDF is large — a clear photo of the lease works best');return;}draft.lease=rd.result;draft.leaseType='pdf';leaseStatus(f.name);};rd.onerror=()=>toast('Could not read that file');rd.readAsDataURL(f);}
+  else if(f.type.startsWith('image/')){shrink(f,u=>{draft.lease=u;draft.leaseType='img';leaseStatus(f.name);});}
+  else{toast('Upload a photo or PDF of your lease');}}
+function leaseStatus(name){const el=$('#w-lease-status');if(el)el.innerHTML='✅ <b>Lease attached</b> ('+esc(name).slice(0,40)+'). After you post, we review it privately, mark you <b>✓ Verified</b>, then delete it. <a onclick="clearLease()" style="cursor:pointer;text-decoration:underline">remove</a>';}
+function clearLease(){draft.lease=null;draft.leaseType=null;const i=$('#w-lease');if(i)i.value='';const el=$('#w-lease-status');if(el)el.innerHTML='Black out anything you like first — you only need the address and your name. We review it privately, mark you <b>✓ Verified</b>, then <b>delete the file</b>. It\'s never shown publicly.';}
+
+/* ============ MODERATOR — verify tenancy (private, key-gated) ============ */
+let _modKey=null,_modQueue=null,_modLoading=false,_modErr=null;
+function modKey(){if(_modKey==null){try{_modKey=localStorage.getItem('radiator.adminKey')||'';}catch(e){_modKey='';}}return _modKey;}
+function setModKey(){const v=($('#mod-key')?$('#mod-key').value:'').trim();if(!v){toast('Paste your moderator key');return;}_modKey=v;try{localStorage.setItem('radiator.adminKey',v);}catch(e){}_modQueue=null;_modErr=null;modLoad();}
+function modForget(){_modKey='';try{localStorage.removeItem('radiator.adminKey');}catch(e){}_modQueue=null;_modErr=null;render();}
+function modLoad(){if(comBase()===null){_modLoading=false;_modErr='Moderation runs on the live site (getradiator.com) only.';render();return;}
+  _modLoading=true;_modErr=null;render();
+  const base=comBase().replace(/\/+$/,'');
+  fetch(base+'/api/verify/queue?key='+encodeURIComponent(modKey()),{cache:'no-store'})
+   .then(r=>r.json().then(j=>({ok:r.ok,j})).catch(()=>({ok:false,j:{}})))
+   .then(({ok,j})=>{_modLoading=false;if(!ok){_modErr=(j&&j.error)||'Access denied — check your key';_modQueue=null;}else{_modQueue=j.items||[];_modErr=null;}render();})
+   .catch(()=>{_modLoading=false;_modErr='Network error — try Refresh';render();});}
+function modAct(id,action){const base=comBase();if(base===null)return;
+  fetch(base.replace(/\/+$/,'')+'/api/verify/'+action,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,key:modKey()})})
+   .then(r=>r.json()).then(j=>{if(j&&j.ok){toast(action==='approve'?'✓ Verified — lease deleted':'Rejected — lease deleted');modLoad();}else{toast((j&&j.error)||'Action failed');}}).catch(()=>toast('Network error'));}
+function modCard(v){const b=bById(v.b);const bname=b?(nameOf(b)||b.addr):v.b;const when=v.ts?new Date(v.ts).toLocaleDateString():'';
+  const proof=v.ptype==='pdf'?`<a href="${v.proof}" target="_blank" rel="noopener" class="btn outline sm" style="width:auto;display:inline-flex">📄 Open lease PDF in new tab</a>`:`<img src="${v.proof}" alt="lease proof" style="max-width:100%;max-height:440px;border-radius:10px;border:1px solid var(--line)">`;
+  return `<div class="card" style="margin-bottom:16px"><div class="card-h"><span class="t">${esc(bname)}</span><span class="small-note" style="color:var(--ink-faint)">${esc(v.status==='former'?'former tenant':'current tenant')}${when?' · '+esc(when):''}</span></div><div class="card-b">
+    <div class="src-note" style="margin:0 0 10px">Submitted by: <b>${esc(v.by||'—')}</b>${v.note?' · "'+esc(v.note)+'"':''}</div>
+    <div style="margin:8px 0">${proof}</div>
+    <div class="btnrow" style="margin-top:14px;gap:10px"><button class="btn primary" style="width:auto;display:inline-flex" onclick="modAct('${v.id}','approve')">✓ Approve &amp; verify</button><button class="btn outline" style="width:auto;display:inline-flex" onclick="modAct('${v.id}','reject')">Reject</button></div>
+    <p class="small-note" style="margin-top:10px">Either action permanently deletes this lease from the server.</p>
+  </div></div>`;}
+function viewModerate(){
+  if(!modKey()){
+    return `<h1 class="page-t">Moderator · verify tenancy</h1><p class="page-sub">Private queue for lease-verification requests. Enter your moderator key to continue.</p>
+    <div class="card" style="max-width:460px"><div class="card-b"><div class="field" style="margin:0"><label for="mod-key">Moderator key</label><input type="password" id="mod-key" placeholder="Paste your key" onkeydown="if(event.key==='Enter')setModKey()"><button class="btn primary full" style="margin-top:14px" onclick="setModKey()">Unlock queue</button></div><p class="small-note" style="margin-top:12px">Stored only on this device. This page is only useful to you — no one can approve verifications without the key.</p></div></div>`;
+  }
+  if(_modQueue===null && !_modLoading && !_modErr){setTimeout(modLoad,0);_modLoading=true;}
+  let body;
+  if(_modLoading){body='<p class="small-note" style="padding:8px 0">Loading queue…</p>';}
+  else if(_modErr){body=`<div class="empty" style="padding:26px"><div class="em">🔒</div><div class="t">${esc(_modErr)}</div><div style="margin-top:14px"><button class="btn outline" style="width:auto;display:inline-flex" onclick="modForget()">Enter a different key</button></div></div>`;}
+  else if(!_modQueue||!_modQueue.length){body=`<div class="empty" style="padding:26px"><div class="em">✅</div><div class="t">Nothing pending</div><div class="d">Lease-verification requests appear here for you to approve or reject. Approving adds the ✓ Verified badge to the tenant's review and deletes the lease.</div></div>`;}
+  else{body=_modQueue.map(modCard).join('');}
+  return `<h1 class="page-t">Moderator · verify tenancy</h1><p class="page-sub">${(_modQueue&&_modQueue.length)?_modQueue.length+' request'+(_modQueue.length===1?'':'s')+' pending. ':''}Approving marks the review <b>✓ Verified</b> and permanently deletes the uploaded lease.</p>
+  <div style="margin-bottom:14px;display:flex;gap:10px"><button class="btn ghost sm" style="width:auto;display:inline-flex" onclick="modLoad()">↻ Refresh</button><button class="btn ghost sm" style="width:auto;display:inline-flex" onclick="modForget()">Lock</button></div>
+  ${body}`;
+}
 function setStar(k,v){if(k==='overall')draft.overall=v;else draft.sub[k]=v;const w=$('#si-'+k);if(w)[...w.children].forEach((btn,i)=>btn.classList.toggle('on',i<v));}
 function toggleUnitMulti(k,v,el){if(!draft.unit[k])draft.unit[k]=[];const i=draft.unit[k].indexOf(v);if(i>=0){draft.unit[k].splice(i,1);el.classList.remove('on');}else{draft.unit[k].push(v);el.classList.add('on');}}
 function setWould(v,el){draft.would=v;[...el.parentNode.children].forEach(b=>b.classList.remove('on'));el.classList.add('on');}
@@ -1593,9 +1711,10 @@ function submitReview(){let bid=$('#w-bid').value;
     yearBuilt:parseInt(val('w-year'))||0,
     moveIn:($('#w-in').value||'').trim(),moveOut:($('#w-out').value||'').trim(),status:val('w-status')||'current',
     would:draft.would,surprise:draft.surprise,unit2:Object.keys(unit2).length?unit2:null,
-    selfConfirmed:$('#w-verify').checked,verified:false,author:(S.handle?S.handle:'A Chicago renter'),helpful:0,photos:draft.photos.slice(),mine:true,date:now()};
+    selfConfirmed:$('#w-verify').checked,verified:false,verifyPending:!!draft.lease,author:(S.handle?S.handle:'A Chicago renter'),helpful:0,photos:draft.photos.slice(),mine:true,date:now()};
   S.reviews.unshift(rv);const wasLocked=!hasAccess();S.unlockedUntil=Math.max(S.unlockedUntil,now()+30*DAY);persist();comPush('reviews',rv);
-  toast(wasLocked?'Review posted — 30 days unlocked! 🎉':'Review posted — thank you!');nav.prev=[{view:'explore',id:null}];go('building',bid);}
+  if(draft.lease){comPush('verify',{rid:rv.id,b:bid,proof:draft.lease,ptype:draft.leaseType||'img',status:rv.status,by:rv.author});}
+  toast(draft.lease?'Review posted — verification pending 🪪':(wasLocked?'Review posted — 30 days unlocked! 🎉':'Review posted — thank you!'));nav.prev=[{view:'explore',id:null}];go('building',bid);}
 
 /* ============ REPORT ISSUE ============ */
 let issueDraft=null;
