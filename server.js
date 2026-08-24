@@ -64,6 +64,30 @@ app.get('/api/health', (_req, res) => {
   });
 });
 
+// --- TEMP DIAGNOSTIC: surface exactly what Google Text Search returns (no key leaked) ---
+app.get('/api/debug/google', async (req, res) => {
+  const address = (req.query.address || '').toString().trim() || '540 N State St';
+  const KEY = process.env.GOOGLE_PLACES_KEY;
+  if (!KEY) return res.json({ error: 'no GOOGLE_PLACES_KEY set' });
+  const query = `${address}, Chicago, IL`;
+  const url = 'https://maps.googleapis.com/maps/api/place/textsearch/json?query=' + encodeURIComponent(query) + '&key=' + KEY;
+  try {
+    const json = await (await fetch(url)).json();
+    const results = json.results || [];
+    res.json({
+      query,
+      status: json.status,
+      error_message: json.error_message || null,
+      resultCount: results.length,
+      first3: results.slice(0, 3).map(r => ({
+        name: r.name, rating: r.rating, user_ratings_total: r.user_ratings_total, types: r.types,
+      })),
+    });
+  } catch (e) {
+    res.json({ query, fetchError: e.message });
+  }
+});
+
 app.get('/api/building', async (req, res) => {
   const address = (req.query.address || '').toString().trim();
   if (!address) return res.status(400).json({ error: 'address query param required' });
