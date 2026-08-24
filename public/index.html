@@ -916,7 +916,7 @@ function urlFor(view,id){
   if(view==='building'){const b=bById(id);return '/building/'+id+(b&&b.addr?'/'+urlSlug(b.addr):'');}
   if(view==='landlord'){const b=bById(id);const pg=b&&b.pg;return pg?('/company/'+pg):('/company/'+id);}
   if(view==='neighborhood')return '/neighborhood/'+urlSlug(id||'');
-  if(['explore','map','compare','neighborhoods','tools','pricing','saved','guide','profile','terms','privacy','guidelines','moderate'].includes(view))return '/'+view;
+  if(['explore','map','compare','neighborhoods','tools','pricing','saved','guide','profile','terms','privacy','guidelines','moderate','directory'].includes(view))return '/'+view;
   if(view==='write'||view==='issue')return '/'+view+(id?('/'+id):'');
   return '/';
 }
@@ -928,7 +928,7 @@ function setNavFromPath(path){
   if(seg==='building'){nav.view='building';nav.id=parts[1]||null;return;}
   if(seg==='company'){const pg=parts[1];const b=REAL.find(x=>String(x.pg)===String(pg));if(b){nav.view='landlord';nav.id=b.id;return;}nav.view='explore';nav.id=null;return;}
   if(seg==='neighborhood'){const s=parts[1]||'';const h=HOODS.find(x=>urlSlug(x)===s);nav.view=h?'neighborhood':'neighborhoods';nav.id=h||null;return;}
-  const known=['explore','map','compare','neighborhoods','tools','pricing','saved','guide','profile','write','issue','terms','privacy','guidelines','moderate'];
+  const known=['explore','map','compare','neighborhoods','tools','pricing','saved','guide','profile','write','issue','terms','privacy','guidelines','moderate','directory'];
   if(known.includes(seg)){nav.view=seg;nav.id=parts[1]||null;return;}
   nav.view='home';nav.id=null;
 }
@@ -962,7 +962,7 @@ function render(){
   const inner = v==='home'?viewHome() : v==='building'?viewBuilding(nav.id) : v==='landlord'?viewLandlord(nav.id) : v==='write'?viewWrite(nav.id) : v==='issue'?viewIssue(nav.id)
     : v==='map'?viewMap() : v==='compare'?viewCompare() : v==='neighborhoods'?viewNeighborhoods() : v==='neighborhood'?viewNeighborhood(nav.id)
     : v==='tools'?viewTools() : v==='guide'?viewGuide() : v==='saved'?viewSaved() : v==='pricing'?viewPricing() : v==='profile'?viewProfile()
-    : v==='terms'?viewLegal('terms') : v==='privacy'?viewLegal('privacy') : v==='guidelines'?viewLegal('guidelines') : v==='moderate'?viewModerate() : viewExplore();
+    : v==='terms'?viewLegal('terms') : v==='privacy'?viewLegal('privacy') : v==='guidelines'?viewLegal('guidelines') : v==='moderate'?viewModerate() : v==='directory'?viewDirectory() : viewExplore();
   const isHome = v==='home';
   const banner = isHome?'' : isDemo()?`<div class="samplebanner demo">Showcase mode · fictional buildings &amp; sample reviews — switch to Live in Profile</div>`
     :`<div class="samplebanner live">Live City of Chicago building records · ${REAL.length} buildings · updated ${esc(CHI.generated||'')}</div>`;
@@ -1004,6 +1004,7 @@ function sidebar(){const v=nav.view;const isExp=['explore','building','landlord'
     ${item('explore',IC.explore,'Explore',isExp)}
     ${item('map',IC.map,'Map',v==='map')}
     ${item('compare',IC.compare,'Compare',v==='compare',cmpN?`<span class="badge">${cmpN}</span>`:'')}
+    ${item('directory','🏆','Rankings',v==='directory')}
     ${item('neighborhoods',IC.hood,'Neighborhoods',v==='neighborhoods'||v==='neighborhood')}
     ${item('tools',IC.tools,'RLTO Tools',v==='tools'||v==='guide')}
     ${item('saved',IC.saved,'Watchlist',v==='saved',S.saved.length?`<span class="badge">${S.saved.length}</span>`:'')}
@@ -1096,7 +1097,14 @@ function viewHome(){
       <div class="fcard"><div class="fic">🏛️</div><h3>Real City records</h3><p>${total} Chicago buildings with their code-violation history, translated from government tables into plain English — open vs resolved, and what keeps breaking.</p></div>
       <div class="fcard"><div class="fic">💬</div><h3>Reviews that count</h3><p>Structured, verified-tenant reviews with sub-scores and "what I wish I'd known," plus ratings aggregated from Google, Yelp &amp; Reddit — all in one place.</p></div>
     </div>
-    <div class="g2g-band">
+    <div style="margin-top:34px">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:14px">
+        <h2 style="font-size:1.5rem;margin:0">Explore notable Chicago buildings</h2>
+        <a onclick="tab('directory')" style="cursor:pointer;color:var(--heat-deep);font-weight:700;font-size:14px;white-space:nowrap">See rankings →</a>
+      </div>
+      <div class="bgrid">${featuredBuildings().map(featCard).join('')}</div>
+    </div>
+    <div class="g2g-band" style="margin-top:30px">
       <div><h2>Post one honest review, unlock the whole city.</h2><p>Radiator runs on give-to-get: share your building experience and get 30 days of full access to every review in Chicago. Free to browse the records, always. <a onclick="tab('pricing')" style="color:#fff;text-decoration:underline;text-underline-offset:3px;cursor:pointer;white-space:nowrap">See all plans →</a></p></div>
       <button class="btn" onclick="go('write',null)">＋ Write a review</button>
     </div>
@@ -1462,6 +1470,57 @@ function viewLandlord(bid){const b=bById(bid);if(!b)return '<div class="empty">N
   ${catCard}
   <div class="section-t">Buildings (${bs.length})</div><div class="bgrid">${bs.map(bcard).join('')}</div>
   <p class="small-note" style="margin-top:16px">${b.demo?'Sample portfolio for demonstration.':'Buildings the City of Chicago groups under the same internal property group (#'+esc(b.pg)+') — often shared ownership or management. The city dataset doesn\'t publish the operator\'s name, so renters name it here.'}</p>`;
+}
+
+/* ============ RANKINGS / DIRECTORY ============ */
+let dirTab='buildings',dirSort='violations';
+function setDirTab(t){dirTab=t;render();}
+function setDirSort(s){dirSort=s;render();}
+function featuredBuildings(){const out=[];Object.keys(SEED_NAMES).forEach(a=>{const b=REAL.find(x=>x.addr===a);if(b)out.push(b);});
+  if(out.length<8){for(const b of REAL){if(out.length>=8)break;if(!out.includes(b)&&(b.open>0))out.push(b);}}
+  return out.slice(0,8);}
+function featCard(b){const sc=scoreOf(b);const g=gradeOf(sc);const sv=(typeof svPhoto==='function')?svPhoto(b):null;const seed=hashStr(b.id+b.name);
+  return `<button class="bcard" style="border:none;cursor:pointer;padding:0;text-align:left;width:100%" onclick="go('building','${b.id}')">
+    <div class="thumb ${sv?'hasimg':''}" style="width:100%;${sv?'':gradOf(seed)}">${sv?`<img class="cover-img" src="${sv}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling&&(this.nextElementSibling.style.display='none')"><div class="scrim"></div>`:`<span class="ph-emoji">${emoOf(seed)}</span>`}<div class="score-badge"><span class="scorechip"><span class="g ${gradeClass(g)}">${g}</span><span class="n">${sc}<small>/100</small></span></span></div></div>
+    <div class="bcard-body"><div class="name">${esc(nameOf(b))}</div><div class="addr">${esc(b.hood)}</div></div></button>`;}
+// portfolios = City property groups (shared owner/manager). Ranked, named or not.
+let _portRanked=null;
+function portfoliosRanked(){if(_portRanked)return _portRanked;const idx=pgIndex();const rows=[];
+  Object.keys(idx).forEach(pg=>{const bs=idx[pg];if(bs.length<2)return; // portfolios = 2+ buildings
+    const open=bs.reduce((a,x)=>a+(x.open||0),0);const rs=bs.flatMap(x=>reviewsFor(x.id));const avg=rs.length?rs.reduce((a,r)=>a+r.overall,0)/rs.length:0;
+    const worst=Math.max(...bs.map(riskOf));const name=managerNameOf(bs[0]);
+    rows.push({pg,bs,count:bs.length,open,avg,rn:rs.length,worst,name,bid:bs[0].id});});
+  return _portRanked=rows;}
+function dirSortLabel(s){return {rating:'Highest rated',lowrating:'Lowest rated',violations:'Most violations',clean:'Cleanest record',reviews:'Most reviewed',size:'Largest'}[s]||s;}
+function viewDirectory(){
+  const isCo=dirTab==='companies';
+  const sorts=isCo?['violations','clean','size','rating','lowrating']:['violations','clean','rating','lowrating','reviews'];
+  const sortSel=`<span class="selpill"><select onchange="setDirSort(this.value)">${sorts.map(s=>`<option value="${s}"${dirSort===s?' selected':''}>${dirSortLabel(s)}</option>`).join('')}</select></span>`;
+  const tabBtn=(k,label)=>`<button class="dtab ${dirTab===k?'on':''}" onclick="setDirTab('${k}')" style="padding:9px 16px;border-radius:999px;border:1px solid var(--line);background:${dirTab===k?'var(--ink)':'var(--surface)'};color:${dirTab===k?'#fff':'var(--ink)'};font-weight:700;font-size:13.5px;cursor:pointer">${label}</button>`;
+  let list;
+  if(isCo){
+    let rows=portfoliosRanked().slice();
+    const cmp={violations:(a,b)=>b.open-a.open,clean:(a,b)=>a.open-b.open,size:(a,b)=>b.count-a.count,rating:(a,b)=>b.avg-a.avg||b.rn-a.rn,lowrating:(a,b)=>(a.rn?a.avg:99)-(b.rn?b.avg:99)}[dirSort]||((a,b)=>b.open-a.open);
+    rows.sort(cmp);rows=rows.slice(0,50);
+    list=`<div class="result-meta"><span class="count">${portfoliosRanked().length.toLocaleString()} property groups (2+ buildings)</span></div>
+    <div style="display:grid;gap:12px">${rows.map((r,i)=>`<button class="card" style="border:none;text-align:left;cursor:pointer;width:100%;padding:0" onclick="go('landlord','${r.bid}')"><div class="card-b" style="display:flex;align-items:center;gap:14px">
+      <div style="font-family:var(--mono);font-size:18px;font-weight:800;color:var(--ink-faint);min-width:30px">#${i+1}</div>
+      <div style="width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,#4C6FA5,#33507E);display:flex;align-items:center;justify-content:center;font-size:22px;flex:none">🏢</div>
+      <div style="flex:1;min-width:0"><div style="font-weight:750;font-size:15px">${esc(r.name||('Property group #'+r.pg))}${r.name?'':' <span style=\"font-weight:500;color:var(--ink-faint);font-size:12px\">· unnamed</span>'}</div>
+        <div style="font-size:12.5px;color:var(--ink-soft);margin-top:2px">${r.count} buildings · <b>${r.open}</b> open violations${r.rn?` · ${r.avg.toFixed(1)}★ (${r.rn})`:''}</div></div>
+      <span class="flag ${RISK_CLASS[r.worst]}" style="display:inline-flex;flex:none"><span class="dot"></span>${RISK_LABEL[r.worst]}</span></div></button>`).join('')}</div>
+    <p class="small-note" style="margin-top:14px">Property groups are how the City of Chicago clusters buildings under shared ownership/management. Name a management company on any portfolio page to make it searchable by name.</p>`;
+  }else{
+    let bs=REAL.map(b=>{b._r=ratingOf(b.id);b._s=scoreOf(b);return b;});
+    const cmp={violations:(a,b)=>b.open-a.open,clean:(a,b)=>a.open-b.open||b.fixed-a.fixed,rating:(a,b)=>(b._r.n?b._r.avg:0)-(a._r.n?a._r.avg:0)||b._r.n-a._r.n,lowrating:(a,b)=>(a._r.n?a._r.avg:99)-(b._r.n?b._r.avg:99),reviews:(a,b)=>b._r.n-a._r.n}[dirSort]||((a,b)=>b.open-a.open);
+    bs.sort(cmp);bs=bs.slice(0,60);
+    list=`<div class="result-meta"><span class="count">Top 60 of ${REAL.length.toLocaleString()} buildings · ${dirSortLabel(dirSort)}</span></div><div class="bgrid">${bs.map(bcard).join('')}</div>`;
+  }
+  return `<h1 class="page-t">🏆 Rankings</h1><p class="page-sub">Browse Chicago landlords and buildings, ranked. Compare management companies and apartment buildings by violations, cleanliness, and tenant ratings.</p>
+  <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">${tabBtn('companies','🏢 Management companies')}${tabBtn('buildings','🏬 Apartment buildings')}</div>
+  <div class="filterbar" style="margin-bottom:16px">${sortSel}</div>
+  ${list}
+  ${siteFooter()}`;
 }
 
 /* ============ COMPARE ============ */
