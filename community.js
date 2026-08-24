@@ -74,7 +74,14 @@ function mount(app) {
       moveIn: plain(b.moveIn, 12), moveOut: plain(b.moveOut, 12),
       unit2: (b.unit2 && typeof b.unit2 === 'object') ? b.unit2 : null,
       photos: photoList(b.photos),
-      helpful: 0, verified: !!b.verified,
+      helpful: 0,
+      verified: !!b.verified,
+      // Badge state: current/former, self-confirmed checkbox, and whether a
+      // tenancy proof is awaiting moderator review. `verified` is only ever set
+      // true by the moderation flow, never by the client here.
+      status: b.status === 'former' ? 'former' : 'current',
+      selfConfirmed: !!b.selfConfirmed,
+      verifyPending: !!b.verifyPending,
     };
     try { await store.putItem('review', rv); res.json({ ok: true, item: rv }); }
     catch (e) { console.error(e); res.status(500).json({ error: 'save failed' }); }
@@ -125,6 +132,82 @@ function mount(app) {
     };
     try { await store.putItem('reply', rp); res.json({ ok: true, item: rp }); }
     catch (e) { console.error(e); res.status(500).json({ error: 'save failed' }); }
+  });
+
+  // ---- Verified-tenant flow (private tenancy proof + moderation) ----
+  // A data: URL (image or PDF) of a lease, capped hard so the store can't flood.
+  function proofOK(s, maxLen = 2200000) {
+    return typeof s === 'string' && /^data:(image\/|application\/pdf)/.test(s) && s.length < maxLen;
+  }
+  // Admin gate for the moderation endpoints. Key comes from env, compared to a
+  // header / query / body value. If unset, moderation is simply unavailable.
+  function admin(req, res) {
+    if (!process.env.ADMIN_KEY) { res.status(503).json({ error: 'Moderation is not configured yet.' }); return false; }
+    const k = String(req.headers['x-admin-key'] || (req.query && req.query.key) || (req.body && req.body.key) || '');
+    if (k !== process.env.ADMIN_KEY) { res.status(403).json({ error: 'Invalid moderator key.' }); return false; }
+    return true;
+  }
+
+  // Tenant submits a redacted lease to request a ✓ Verified badge on their review.
+  app.post('/api/verify', async (req, res) => {
+    if (guard(req, res)) return;
+    const b = req.body || {};
+    if (!id(b.rid) || !bid(b.b) || !proofOK(b.proof)) {
+      return res.status(400).json({ error: 'A review, a building, and a lease image/PDF are required.' });
+    }
+    const item = {
+      id: 'vf_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+      rid: id(b.rid), b: bid(b.b), ts: Date.now(),
+      status: b.status === 'former' ? 'former' : 'current',
+      by: clean(b.by, 60) || 'A tenant',
+      note: clean(b.note, 300),
+      proof: b.proof,                    // private; never returned by getAll
+      ptype: b.ptype === 'pdf' ? 'pdf' : 'img',
+    };
+    try {
+      await store.putItem('verify', item);
+      // flip the public review to "pending" so the badge reads correctly for all
+      const rv = await store.getItem(item.rid);
+      if (rv) { rv.verifyPending = true; await store.putItem('review', rv); }
+      res.json({ ok: true });
+    } catch (e) { console.error(e); res.status(500).json({ error: 'save failed' }); }
+  });
+
+  // Moderator: list pending proofs (includes the lease image — admin only).
+  app.get('/api/verify/queue', async (req, res) => {
+    if (!admin(req, res)) return;
+    try { res.json({ ok: true, items: await store.listVerify() }); }
+    catch (e) { console.error(e); res.status(500).json({ error: 'queue read failed' }); }
+  });
+
+  // Moderator: approve — mark the review ✓ Verified, then DELETE the proof.
+  app.post('/api/verify/approve', async (req, res) => {
+    if (!admin(req, res)) return;
+    const vId = id((req.body || {}).id);
+    if (!vId) return res.status(400).json({ error: 'verification id required' });
+    try {
+      const v = await store.getItem(vId);
+      if (!v) return res.status(404).json({ error: 'not found (already handled?)' });
+      await store.setReviewVerified(v.rid, v.status);
+      await store.deleteItem(vId);        // erase the lease once the decision is made
+      res.json({ ok: true });
+    } catch (e) { console.error(e); res.status(500).json({ error: 'approve failed' }); }
+  });
+
+  // Moderator: reject — clear pending on the review, then DELETE the proof.
+  app.post('/api/verify/reject', async (req, res) => {
+    if (!admin(req, res)) return;
+    const vId = id((req.body || {}).id);
+    if (!vId) return res.status(400).json({ error: 'verification id required' });
+    try {
+      const v = await store.getItem(vId);
+      if (v) {
+        const rv = await store.getItem(v.rid);
+        if (rv) { rv.verifyPending = false; await store.putItem('review', rv); }
+        await store.deleteItem(vId);
+      }
+      res.json({ ok: true });
+    } catch (e) { console.error(e); res.status(500).json({ error: 'reject failed' }); }
   });
 
   // Name a MANAGEMENT COMPANY (keyed by property group, e.g. "pg651637").

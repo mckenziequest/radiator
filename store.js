@@ -16,7 +16,10 @@ const fs = require('fs');
 const path = require('path');
 
 const HAS_PG = !!process.env.DATABASE_URL;
-const KINDS = ['review', 'issue', 'qa', 'name', 'photo', 'reply'];
+// 'verify' holds private tenancy proof (a lease image/PDF). It is stored like
+// any item but is NEVER returned by getAll — only the admin moderation
+// endpoints can read it, and it is deleted the moment a decision is made.
+const KINDS = ['review', 'issue', 'qa', 'name', 'photo', 'reply', 'verify'];
 
 let pg = null;
 if (HAS_PG) {
@@ -157,6 +160,41 @@ async function addReport(kind, ref, reason) {
   return rec;
 }
 
+// ---------- verification (private, admin-only) ----------
+// Every pending tenancy-proof item, newest first. Admin-only; includes the proof.
+async function listVerify() {
+  if (HAS_PG) {
+    const r = await pg.query(`SELECT data FROM items WHERE kind = 'verify' ORDER BY ts DESC`);
+    return r.rows.map(row => row.data);
+  }
+  const m = loadFile();
+  return Object.values(m.items).filter(r => r.kind === 'verify').sort((a, b) => b.ts - a.ts).map(r => r.data);
+}
+// Fetch one stored item's data by id (any kind).
+async function getItem(id) {
+  if (HAS_PG) {
+    const r = await pg.query(`SELECT data FROM items WHERE id = $1`, [String(id)]);
+    return r.rows[0] ? r.rows[0].data : null;
+  }
+  const rec = loadFile().items[String(id)];
+  return rec ? rec.data : null;
+}
+// Permanently delete one item by id (used to erase proof after a decision).
+async function deleteItem(id) {
+  if (HAS_PG) { await pg.query(`DELETE FROM items WHERE id = $1`, [String(id)]); return; }
+  const m = loadFile(); delete m.items[String(id)]; saveFile();
+}
+// Mark a review verified (moderator-approved tenancy proof).
+async function setReviewVerified(reviewId, type) {
+  const rv = await getItem(reviewId);
+  if (!rv) return null;
+  rv.verified = true;
+  rv.verifyPending = false;
+  if (type === 'former' || type === 'current') rv.status = type;
+  await putItem('review', rv);
+  return rv;
+}
+
 // ---------- reads ----------
 // Everything the client needs to render shared content, optionally only what
 // changed since `since` (ms epoch) for cheap polling.
@@ -164,13 +202,14 @@ async function getAll(since) {
   const s = Number(since) || 0;
   let items = [], helpful = {};
   if (HAS_PG) {
-    const r = await pg.query(`SELECT data, kind, ts FROM items WHERE ts > $1 ORDER BY ts ASC`, [s]);
+    // Never expose 'verify' (private tenancy proof) through the public feed.
+    const r = await pg.query(`SELECT data, kind, ts FROM items WHERE ts > $1 AND kind <> 'verify' ORDER BY ts ASC`, [s]);
     items = r.rows.map(row => ({ ...row.data, _kind: row.kind }));
     const h = await pg.query(`SELECT review_id, n FROM helpful`);
     h.rows.forEach(row => { helpful[row.review_id] = row.n; });
   } else {
     const m = loadFile();
-    items = Object.values(m.items).filter(r => r.ts > s).sort((a, b) => a.ts - b.ts)
+    items = Object.values(m.items).filter(r => r.ts > s && r.kind !== 'verify').sort((a, b) => a.ts - b.ts)
       .map(r => ({ ...r.data, _kind: r.kind }));
     helpful = m.helpful;
   }
@@ -197,4 +236,4 @@ async function stats() {
   return o;
 }
 
-module.exports = { init, putItem, setName, incHelpful, addReport, addSignup, signupCount, getAll, stats, HAS_PG };
+module.exports = { init, putItem, setName, incHelpful, addReport, addSignup, signupCount, getAll, stats, listVerify, getItem, deleteItem, setReviewVerified, HAS_PG };
