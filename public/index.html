@@ -1477,10 +1477,28 @@ function openPaywall(){const root=$('#modal-root');root.innerHTML=`<div class="m
     <div class="plan pick" data-p="pass" onclick="pickPlan('pass')"><div><div class="pn">Day pass</div><div class="pd">24 hours, all reviews</div></div><div class="price">$9.99</div></div>
     <div class="plan" data-p="quarter" onclick="pickPlan('quarter')"><div><div class="pn">3-month access</div><div class="pd">Best for apartment hunting</div></div><div class="price">$19.99</div></div>
     <div class="plan" data-p="renter" onclick="pickPlan('renter')"><div><div class="pn">Renter — yearly</div><div class="pd">Unlimited, alerts, watchlist</div></div><div class="price">$79</div></div>
-    <button class="btn primary full" id="buybtn" onclick="buy()">Continue</button><div class="or">or</div><button class="btn ghost full" onclick="closeModal();go('write', nav.view==='building'?nav.id:null)">Write a review — free</button><div class="demo">Demo checkout · no real payment is taken</div></div></div>`;
+    <button class="btn primary full" id="buybtn" onclick="buy()">Continue</button><div class="or">or</div><button class="btn ghost full" onclick="closeModal();go('write', nav.view==='building'?nav.id:null)">Write a review — free</button><div class="demo">${PAYMENTS_ON?'🔒 Secure checkout by Stripe':'Demo checkout · no real payment is taken'}</div></div></div>`;
   requestAnimationFrame(()=>$('#mbg').classList.add('show'));openPaywall._pick='pass';}
 function pickPlan(p){openPaywall._pick=p;document.querySelectorAll('.modal .plan').forEach(el=>el.classList.toggle('pick',el.dataset.p===p));}
-function buy(){const p=openPaywall._pick||'pass';if(p==='pass'){S.unlockedUntil=Math.max(S.unlockedUntil,now()+DAY);S.plan='free';}else if(p==='quarter'){S.unlockedUntil=Math.max(S.unlockedUntil,now()+90*DAY);S.plan='free';}else{S.unlockedUntil=now()+365*DAY;S.plan='renter';}persist();closeModal();toast('Access unlocked (demo)');render();}
+let PAYMENTS_ON=false;
+function demoUnlock(p){if(p==='pass'){S.unlockedUntil=Math.max(S.unlockedUntil,now()+DAY);S.plan='free';}else if(p==='quarter'){S.unlockedUntil=Math.max(S.unlockedUntil,now()+90*DAY);S.plan='free';}else{S.unlockedUntil=now()+365*DAY;S.plan='renter';}persist();closeModal();toast('Access unlocked (demo)');render();}
+async function buy(){const p=openPaywall._pick||'pass';
+  if(comBase()!==null&&PAYMENTS_ON){
+    const btn=$('#buybtn');if(btn){btn.textContent='Redirecting to secure checkout…';btn.disabled=true;}
+    try{const r=await fetch(comBase()+'/api/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plan:p})});
+      if(r.ok){const j=await r.json();if(j&&j.url){location.href=j.url;return;}}
+      toast('Checkout is temporarily unavailable — try again in a moment');if(btn){btn.textContent='Continue';btn.disabled=false;}return;
+    }catch(e){toast('Checkout error — please try again');if(btn){btn.textContent='Continue';btn.disabled=false;}return;}
+  }
+  demoUnlock(p); // artifact preview, or Stripe not configured yet
+}
+async function verifyReturn(){const q=new URLSearchParams(location.search);const sid=q.get('session_id');
+  if(!q.get('paid')||!sid||comBase()===null)return;
+  try{const r=await fetch(comBase()+'/api/checkout/verify?session_id='+encodeURIComponent(sid));const j=await r.json();
+    if(j&&j.ok){S.unlockedUntil=Math.max(S.unlockedUntil,now()+(j.days||0)*DAY);if(j.renter)S.plan='renter';persist();toast('Payment complete — full access unlocked! 🎉');}
+  }catch(e){}
+  try{history.replaceState({},'',urlFor(nav.view,nav.id)||'/');}catch(e){}
+}
 function closeModal(){const bg=$('#mbg');if(bg){bg.classList.remove('show');setTimeout(()=>$('#modal-root').innerHTML='',260);}}
 
 /* ============ BOOT ============ */
@@ -1495,6 +1513,11 @@ $('#app').innerHTML='<div style="padding:70px 24px;text-align:center;color:var(-
   render();syncURL(true);
   if(nav.view==='tools'){calcDeposit();calcNotice();}
   const changed=await pullSync();if(changed){if(S.mode!=='live'&&S.mode!=='demo')S.mode='live';clearCaches();render();}
+  // payments: detect if real Stripe checkout is live, and finish any returning checkout
+  if(comBase()!==null){
+    fetch(comBase()+'/api/payments/status').then(r=>r.json()).then(j=>{PAYMENTS_ON=!!(j&&j.enabled);}).catch(()=>{});
+    verifyReturn();
+  }
   // shared community: pull now + poll (no-op on the artifact where there is no backend)
   if(comBase()!==null){comPull();setInterval(comPull,25000);
     document.addEventListener('visibilitychange',()=>{if(!document.hidden)comPull();});}
