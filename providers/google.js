@@ -81,14 +81,15 @@ async function getGoogle(address) {
   }
   if (!top) return null;
 
-  // Place Details for a few review snippets (best effort).
+  // Place Details for a few review snippets + photo references (best effort).
   let reviews = [];
+  let photoRefs = [];
   let placeUrl = 'https://www.google.com/maps/place/?q=place_id:' + top.place_id;
   try {
     const detUrl =
       'https://maps.googleapis.com/maps/api/place/details/json' +
       '?place_id=' + top.place_id +
-      '&fields=url,reviews&key=' + KEY;
+      '&fields=url,reviews,photos&key=' + KEY;
     const det = (await (await fetch(detUrl)).json()).result || {};
     if (det.url) placeUrl = det.url;
     reviews = (det.reviews || []).map((r) => ({
@@ -98,6 +99,9 @@ async function getGoogle(address) {
       time: r.time,
       url: r.author_url || det.url,
     }));
+    // Keep just the opaque photo references; the API key is applied later,
+    // server-side, by the /api/photo proxy so it is never exposed to clients.
+    photoRefs = (det.photos || []).slice(0, 6).map((p) => p.photo_reference).filter(Boolean);
   } catch (e) { /* details are optional */ }
 
   return {
@@ -107,6 +111,7 @@ async function getGoogle(address) {
     count: top.user_ratings_total || 0,
     url: placeUrl,
     reviews,
+    photoRefs,
   };
 }
 
