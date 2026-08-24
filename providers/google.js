@@ -1,58 +1,103 @@
 // providers/google.js — Google Places API integration.
 //
-// Flow (official, ToS-compliant):
-//   1. Find Place From Text  -> resolve the address to a place_id
-//   2. Place Details          -> rating, user_ratings_total, up to 5 reviews
+// Resolving a plain street address to the right listing is the tricky part:
+//   • "540 N State St, Chicago, IL"            -> the address POINT (no rating)
+//   • "540 N State St apartments Chicago IL"    -> "Grand Plaza" 3.8 (62 reviews)
+// Biasing the Text Search toward apartments is what surfaces the building's
+// review listing instead of a bare map pin. We then guard against grabbing a
+// *nearby* apartment by requiring the result's own address to carry the same
+// street number as the building we asked about.
 //
 // Docs:
-//   https://developers.google.com/maps/documentation/places/web-service/search-find-place
+//   https://developers.google.com/maps/documentation/places/web-service/search-text
 //   https://developers.google.com/maps/documentation/places/web-service/details
-//
-// LIMIT: the Places API returns at most 5 review snippets per place. The
-// aggregate rating + total count are complete; the full text of every review
-// is NOT available through the official API (and scraping is not permitted).
 
 const KEY = process.env.GOOGLE_PLACES_KEY;
+
+// Leading street number of an address, e.g. "540 N State St" -> "540".
+function streetNumber(addr) {
+  const m = String(addr || '').trim().match(/^(\d+)/);
+  return m ? m[1] : null;
+}
 
 async function getGoogle(address) {
   if (process.env.MOCK === '1') return mockGoogle(address);
   if (!KEY) return null; // not configured -> skip this source
 
-  const query = `${address}, Chicago, IL`;
+  // Bias toward the apartment/building listing (which carries the reviews)
+  // rather than the raw street-address point.
+  const query = `${address} apartments Chicago IL`;
 
-  // 1) Find Place
-  const findUrl =
-    'https://maps.googleapis.com/maps/api/place/findplacefromtext/json' +
-    `?input=${encodeURIComponent(query)}` +
-    '&inputtype=textquery&fields=place_id&key=' +
-    KEY;
-  const findRes = await fetch(findUrl);
-  const findJson = await findRes.json();
-  const placeId = findJson.candidates && findJson.candidates[0] && findJson.candidates[0].place_id;
-  if (!placeId) return null;
+  const url =
+    'https://maps.googleapis.com/maps/api/place/textsearch/json' +
+    '?query=' + encodeURIComponent(query) +
+    '&key=' + KEY;
 
-  // 2) Place Details
-  const detUrl =
-    'https://maps.googleapis.com/maps/api/place/details/json' +
-    `?place_id=${placeId}` +
-    '&fields=name,rating,user_ratings_total,url,reviews&key=' +
-    KEY;
-  const detRes = await fetch(detUrl);
-  const det = (await detRes.json()).result || {};
+  let json;
+  try {
+    const res = await fetch(url);
+    json = await res.json();
+  } catch (e) {
+    console.error('GOOGLE textsearch fetch failed:', e.message);
+    return null;
+  }
 
-  return {
-    source: 'google',
-    name: det.name || null,
-    rating: typeof det.rating === 'number' ? det.rating : null,
-    count: det.user_ratings_total || 0,
-    url: det.url || null,
-    reviews: (det.reviews || []).map((r) => ({
+  if (json.status !== 'OK' && json.status !== 'ZERO_RESULTS') {
+    console.error('GOOGLE textsearch status:', json.status, '| msg:', json.error_message || '(none)');
+    return null;
+  }
+
+  // Only listings that actually carry a rating are useful to us.
+  const rated = (json.results || []).filter(
+    (r) => typeof r.rating === 'number' && r.user_ratings_total > 0
+  );
+  if (!rated.length) return null;
+
+  // Guard against a nearby-but-wrong apartment: prefer a rated listing whose
+  // own formatted address begins with the same street number we searched for.
+  const num = streetNumber(address);
+  let top = null;
+  if (num) {
+    top = rated.find((r) => {
+      const fa = String(r.formatted_address || r.vicinity || '');
+      // match the number as a standalone token at the start of the address
+      return new RegExp('(^|\\b)' + num + '\\b').test(fa);
+    });
+  }
+  // Fall back to the strongest rated result only when nothing matched by number
+  // AND the top result is clearly a building (many ratings), to avoid noise.
+  if (!top) {
+    const strong = rated[0];
+    if (strong && strong.user_ratings_total >= 15) top = strong;
+  }
+  if (!top) return null;
+
+  // Place Details for a few review snippets (best effort).
+  let reviews = [];
+  let placeUrl = 'https://www.google.com/maps/place/?q=place_id:' + top.place_id;
+  try {
+    const detUrl =
+      'https://maps.googleapis.com/maps/api/place/details/json' +
+      '?place_id=' + top.place_id +
+      '&fields=url,reviews&key=' + KEY;
+    const det = (await (await fetch(detUrl)).json()).result || {};
+    if (det.url) placeUrl = det.url;
+    reviews = (det.reviews || []).map((r) => ({
       author: r.author_name,
       rating: r.rating,
       text: r.text,
-      time: r.time, // unix seconds
+      time: r.time,
       url: r.author_url || det.url,
-    })),
+    }));
+  } catch (e) { /* details are optional */ }
+
+  return {
+    source: 'google',
+    name: top.name || null,
+    rating: top.rating,
+    count: top.user_ratings_total || 0,
+    url: placeUrl,
+    reviews,
   };
 }
 
