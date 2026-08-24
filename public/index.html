@@ -852,8 +852,8 @@ function postSignup(ctx){const el=document.getElementById('su-'+ctx);if(!el)retu
   toast('You\'re on the list — thanks! 🎉');render();
 }
 function aroundWebCard(name,isCompany,site){if(!name)return '';const L=webLinks(name,isCompany);
-  const siteHost=(()=>{try{return site?new URL(site).hostname.replace(/^www\./,''):null;}catch(e){return null;}})();
   const btn=(href,label,sub,ic)=>`<a class="webbtn" href="${href}" target="_blank" rel="noopener noreferrer"><span class="wbi">${ic}</span><span class="wbtxt"><span class="wbt">${label}</span><span class="wbs">${sub}</span></span><span class="wbx">↗</span></a>`;
+  const siteHost=(()=>{try{return site?new URL(site).hostname.replace(/^www\./,''):null;}catch(e){return null;}})();
   return `<div class="card"><div class="card-h"><span class="t">🌐 Around the web</span></div><div class="card-b">
     <p class="small-note" style="margin:0 0 12px">See what Chicago renters say about <b style="color:var(--ink)">${esc(name)}</b> elsewhere — live, in their own words. Each opens that site's real search in a new tab.</p>
     <div class="webbtns">
@@ -1132,62 +1132,7 @@ function companyCard(c){const worst=Math.max(...c.buildings.map(riskOf));const b
     <div class="bcard-body"><div class="name">${esc(c.name)}</div><div class="addr">${c.buildings.length} building${c.buildings.length===1?'':'s'} on record</div>
     <div class="recline"><span class="flag ${RISK_CLASS[worst]}" style="display:inline-flex"><span class="dot"></span>${RISK_LABEL[worst]}</span></div>
     <div class="meta">${avg?`<span class="rating-pill">${avg.toFixed(1)} ${starsHTML(avg)}</span>`:`<span class="rating-pill" style="color:var(--ink-faint);font-weight:600">Management company</span>`}<span class="cmpbtn">View portfolio →</span></div></div></button>`;}
-/* ===== browse ALL property managers / property groups (Explore tab) ===== */
-let exploreType='buildings', coSortBy='rated';
-function setExploreType(v){exploreType=v;render();}
-function setCoSort(v){coSortBy=v;render();}
-function allGroups(){
-  if(isDemo()){const m={};DEMO.forEach(b=>{if(b.co)(m[b.co]=m[b.co]||[]).push(b);});return Object.keys(m).map(k=>({key:'co'+k,pg:null,name:k,named:true,buildings:m[k]}));}
-  const names=Object.assign({},COM.names||{},S.names||{});const idx=pgIndex();const out=[];
-  Object.keys(idx).forEach(pg=>{const bs=idx[pg];const nm=names['pg'+pg]||null;if(bs.length<2&&!nm)return;
-    out.push({key:'pg'+pg,pg,name:nm||('Property group #'+pg),named:!!nm,buildings:bs});});
-  return out;}
-function groupStats(c){if(c._st)return c._st;const bs=c.buildings;let open=0,fixed=0,rn=0,rsum=0,ssum=0,worst=0;
-  bs.forEach(b=>{open+=b.open||0;fixed+=b.fixed||0;const r=ratingOf(b.id);rn+=r.n;rsum+=r.avg*r.n;ssum+=scoreOf(b);const rk=riskOf(b);if(rk>worst)worst=rk;});
-  return c._st={open,fixed,worst,n:bs.length,rating:rn?rsum/rn:0,rn,score:Math.round(ssum/bs.length)};}
-function groupCard(c){const st=groupStats(c);const bid=c.buildings[0].id;const g=gradeOf(st.score);
-  return `<button class="bcard" style="text-align:left;cursor:pointer;border:none;width:100%;padding:0" onclick="go('landlord','${bid}')">
-    <div class="thumb" style="background:linear-gradient(135deg,#4C6FA5,#33507E);border:none;width:100%;display:flex;align-items:center;justify-content:center;position:relative"><span style="font-size:40px">🏢</span><div class="score-badge"><span class="scorechip"><span class="g ${gradeClass(g)}">${g}</span><span class="n">${st.score}<small>/100</small></span></span></div></div>
-    <div class="bcard-body"><div class="name">${esc(c.name)}</div><div class="addr">${st.n} building${st.n===1?'':'s'} · ${st.open} open violation${st.open===1?'':'s'}</div>
-    <div class="recline"><span class="flag ${RISK_CLASS[st.worst]}" style="display:inline-flex"><span class="dot"></span>${RISK_LABEL[st.worst]}</span></div>
-    <div class="meta">${st.rn?`<span class="rating-pill">${st.rating.toFixed(1)} ${starsHTML(st.rating)} <small>(${st.rn})</small></span>`:`<span class="rating-pill" style="color:var(--ink-faint);font-weight:600">No tenant reviews yet</span>`}<span class="cmpbtn">View portfolio →</span></div></div></button>`;}
-function exploreTabs(){return `<div class="recency" style="margin:0 0 14px;flex-wrap:wrap;gap:6px">
-    <button class="${exploreType==='buildings'?'on':''}" onclick="setExploreType('buildings')">🏘️ Apartment buildings</button>
-    <button class="${exploreType==='companies'?'on':''}" onclick="setExploreType('companies')">🏢 Property managers</button>
-  </div>`;}
-function viewExploreCompanies(){
-  let list=allGroups();
-  if(searchQ.trim()){const q=searchQ.toLowerCase();list=list.filter(c=>c.name.toLowerCase().includes(q)||('#'+(c.pg||'')).toLowerCase().includes(q));}
-  list.forEach(groupStats);
-  const by={
-    rated:(a,b)=>(b._st.rn?1:0)-(a._st.rn?1:0)||b._st.rating-a._st.rating||b._st.n-a._st.n,
-    lowrated:(a,b)=>(b._st.rn?1:0)-(a._st.rn?1:0)||a._st.rating-b._st.rating||b._st.n-a._st.n,
-    score:(a,b)=>b._st.score-a._st.score||b._st.n-a._st.n,
-    lowscore:(a,b)=>a._st.score-b._st.score||b._st.n-a._st.n,
-    size:(a,b)=>b._st.n-a._st.n,
-    risk:(a,b)=>b._st.worst-a._st.worst||b._st.open-a._st.open,
-    az:(a,b)=>a.name.localeCompare(b.name)
-  };
-  list.sort(by[coSortBy]||by.rated);
-  const shown=list.slice(0,RENDER_CAP);
-  return `<div class="filterbar">
-    <span class="selpill"><select onchange="setCoSort(this.value)">
-      <option value="rated"${coSortBy==='rated'?' selected':''}>Highest rated</option>
-      <option value="lowrated"${coSortBy==='lowrated'?' selected':''}>Lowest rated</option>
-      <option value="score"${coSortBy==='score'?' selected':''}>Best Radiator score</option>
-      <option value="lowscore"${coSortBy==='lowscore'?' selected':''}>Worst Radiator score</option>
-      <option value="size"${coSortBy==='size'?' selected':''}>Biggest portfolios</option>
-      <option value="risk"${coSortBy==='risk'?' selected':''}>Highest risk</option>
-      <option value="az"${coSortBy==='az'?' selected':''}>A–Z</option>
-    </select></span>
-  </div>
-  <div class="result-meta"><span class="count">${list.length.toLocaleString()} property manager${list.length===1?'':'s'}${list.length>RENDER_CAP?' · showing '+RENDER_CAP:''}</span></div>
-  ${shown.length?`<div class="bgrid">${shown.map(groupCard).join('')}</div>${list.length>RENDER_CAP?`<p class="small-note" style="text-align:center;margin-top:18px">Showing the top ${RENDER_CAP} of ${list.length.toLocaleString()} — narrow it with search.</p>`:''}`:`<div class="empty"><div class="em">🏢</div><div class="t">No property managers match</div><div class="d">Managers appear here from the City's property-group records — and get real names as renters add them on any building page.</div></div>`}
-  <div class="src-note" style="margin-top:14px">Portfolios come from City of Chicago code-enforcement property groups. Company names are added by renters — open a portfolio to name one.</div>`;}
 function viewExplore(){
-  if(exploreType==='companies'){return `<h1 class="page-t">Explore Chicago property managers</h1>
-  <p class="page-sub">${isDemo()?'Sample companies from the demo data.':'<b style="color:var(--ink)">Who actually runs the building?</b> Every City-recorded property group, ranked by tenant ratings, Radiator score, portfolio size, or risk.'}</p>
-  ${exploreTabs()}${viewExploreCompanies()}`;}
   let list=buildings();
   if(hoodFilter!=='all')list=list.filter(b=>b.hood===hoodFilter);
   if(riskFilter!=='all')list=list.filter(b=>RISK_CLASS[riskOf(b)]===riskFilter);
@@ -1201,7 +1146,6 @@ function viewExplore(){
   const hoodsForChips=isDemo()?[...new Set(DEMO.map(b=>b.hood))].sort():HOODS;
   return `<h1 class="page-t">Explore Chicago buildings</h1>
   <p class="page-sub">${isDemo()?'Fictional sample buildings to demonstrate the review experience.':'<b style="color:var(--ink)">Before you sign, check the Radiator.</b> Real tenant experiences, rent history, transit, and official city records for every Chicago building — search a name or address.'}</p>
-  ${exploreTabs()}
   <div class="filterbar">
     <span class="selpill ${hoodFilter!=='all'?'act':''}"><select onchange="setFilter('hood',this.value)"><option value="all">All neighborhoods</option>${hoodsForChips.map(h=>`<option value="${esc(h)}"${hoodFilter===h?' selected':''}>${esc(h)}</option>`).join('')}</select></span>
     <span class="selpill ${riskFilter!=='all'?'act':''}"><select onchange="setFilter('risk',this.value)"><option value="all">Any risk</option><option value="good"${riskFilter==='good'?' selected':''}>Good standing</option><option value="watch"${riskFilter==='watch'?' selected':''}>Watch list</option><option value="risk"${riskFilter==='risk'?' selected':''}>High risk</option></select></span>
@@ -1644,6 +1588,33 @@ function viewWrite(bid){const b=bid?bById(bid):null;
   </form></div></div><div style="height:20px"></div>`;
 }
 function initWriteForm(){draft={overall:0,sub:{},photos:[],unit:{pests:[],nearby:[],noiseSrc:[]},would:null,surprise:null,lease:null,leaseType:null};REVIEW_DIMS.forEach(d=>draft.sub[d.k]=0);prefillAddr='';}
+function setStar(k,v){if(k==='overall')draft.overall=v;else draft.sub[k]=v;const w=$('#si-'+k);if(w)[...w.children].forEach((btn,i)=>btn.classList.toggle('on',i<v));}
+function toggleUnitMulti(k,v,el){if(!draft.unit[k])draft.unit[k]=[];const i=draft.unit[k].indexOf(v);if(i>=0){draft.unit[k].splice(i,1);el.classList.remove('on');}else{draft.unit[k].push(v);el.classList.add('on');}}
+function setWould(v,el){draft.would=v;[...el.parentNode.children].forEach(b=>b.classList.remove('on'));el.classList.add('on');}
+function setSurprise(v,el){draft.surprise=v;[...el.parentNode.children].forEach(b=>b.classList.remove('on'));el.classList.add('on');}
+function addPhotos(files){const arr=[...files].slice(0,6-draft.photos.length);arr.forEach(f=>{if(f.type.startsWith('image/'))shrink(f,u=>{draft.photos.push(u);renderThumbs();});});}
+function shrink(file,cb){const img=new Image();const url=URL.createObjectURL(file);img.onload=()=>{const max=900;let w=img.width,h=img.height;if(w>h&&w>max){h=h*max/w;w=max;}else if(h>max){w=w*max/h;h=max;}const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);URL.revokeObjectURL(url);try{cb(c.toDataURL('image/jpeg',0.68));}catch(e){toast('Could not add that photo');}};img.onerror=()=>{URL.revokeObjectURL(url);toast('Could not read that image');};img.src=url;}
+function renderThumbs(){const el=$('#w-thumbs');if(el)el.innerHTML=draft.photos.map((p,i)=>`<div class="th"><img src="${p}" alt=""><button type="button" onclick="rmPhoto(${i})">✕</button></div>`).join('');}
+function rmPhoto(i){draft.photos.splice(i,1);renderThumbs();}
+function submitReview(){let bid=$('#w-bid').value;
+  if(!bid){const raw=($('#w-building')?$('#w-building').value:'').trim();if(!raw){toast('Add a building or address');return;}const pool=isDemo()?DEMO:REAL;const m=pool.find(x=>raw.toLowerCase()===x.name.toLowerCase())||pool.find(x=>raw.toLowerCase().includes(x.addr.toLowerCase().slice(0,14)));if(m)bid=m.id;else{bid='u'+now().toString(36);S.userBuildings.push({id:bid,real:true,name:raw,addr:raw,hood:'Chicago',open:0,fixed:0,last:'',lat:null,lng:null,pg:'',cats:[]});}}
+  const overall=draft.overall;if(!overall){toast('Add an overall star rating');return;}
+  const body=($('#w-body').value||'').trim();if(body.length<12){toast('Tell us a bit more in the review');return;}
+  const val=id=>{const e=$('#'+id);return e?e.value:'';};
+  const unit2={};UNIT_SINGLE.forEach(u=>{const v=val('u-'+u.k);if(v)unit2[u.k]=v;});['pests','nearby','noiseSrc'].forEach(k=>{if(draft.unit[k]&&draft.unit[k].length)unit2[k]=draft.unit[k].filter(x=>x!=='None').length?draft.unit[k].slice():draft.unit[k].slice();});
+  const pt=val('w-parktype');if(pt)unit2.parkingType=pt;
+  const bedsRaw=val('w-beds');const beds=bedsRaw===''?null:parseInt(bedsRaw);
+  const rv={id:'u'+now().toString(36)+Math.floor(Math.random()*1e4).toString(36),b:bid,overall,sub:Object.assign({},draft.sub),
+    title:($('#w-title').value||'').trim(),body,wish:($('#w-wish').value||'').trim(),
+    rent:parseInt(val('w-rent'))||0,beds,renewalPct:parseInt(val('w-renewal'))||0,moveInFee:parseInt(val('w-movein'))||0,parking:parseInt(val('w-parking'))||0,petFee:parseInt(val('w-pet'))||0,
+    yearBuilt:parseInt(val('w-year'))||0,
+    moveIn:($('#w-in').value||'').trim(),moveOut:($('#w-out').value||'').trim(),status:val('w-status')||'current',
+    would:draft.would,surprise:draft.surprise,unit2:Object.keys(unit2).length?unit2:null,
+    selfConfirmed:$('#w-verify').checked,verified:false,verifyPending:!!draft.lease,author:(S.handle?S.handle:'A Chicago renter'),helpful:0,photos:draft.photos.slice(),mine:true,date:now()};
+  S.reviews.unshift(rv);const wasLocked=!hasAccess();S.unlockedUntil=Math.max(S.unlockedUntil,now()+30*DAY);persist();comPush('reviews',rv);
+  if(draft.lease){comPush('verify',{rid:rv.id,b:bid,proof:draft.lease,ptype:draft.leaseType||'img',status:rv.status,by:rv.author});}
+  toast(draft.lease?'Review posted — verification pending 🪪':(wasLocked?'Review posted — 30 days unlocked! 🎉':'Review posted — thank you!'));nav.prev=[{view:'explore',id:null}];go('building',bid);}
+
 function addLease(files){const f=files&&files[0];if(!f)return;
   if(f.type==='application/pdf'){const rd=new FileReader();rd.onload=()=>{if((rd.result||'').length>2000000){toast('That PDF is large — a clear photo of the lease works best');return;}draft.lease=rd.result;draft.leaseType='pdf';leaseStatus(f.name);};rd.onerror=()=>toast('Could not read that file');rd.readAsDataURL(f);}
   else if(f.type.startsWith('image/')){shrink(f,u=>{draft.lease=u;draft.leaseType='img';leaseStatus(f.name);});}
@@ -1826,6 +1797,5 @@ $('#app').innerHTML='<div style="padding:70px 24px;text-align:center;color:var(-
     document.addEventListener('visibilitychange',()=>{if(!document.hidden)comPull();});}
 })();
 </script>
-
 </body>
 </html>
