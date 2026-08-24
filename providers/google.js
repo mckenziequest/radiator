@@ -20,6 +20,92 @@ function streetNumber(addr) {
   return m ? m[1] : null;
 }
 
+// A street address can also be a bar, restaurant, music venue, shop, church, a
+// leasing/brokerage office, or a hotel. Those places carry Google reviews about
+// drinks / shows / service / a stay — NOT about renting or living in the
+// building. Attaching them would put a nightclub's reviews (and party photos),
+// or a management company's service reviews, on a rental listing.
+//
+// We therefore accept a Google Place as a *building* review source only when it
+// reads as a residence, and we bias hard toward SAFE FAILURE: when a candidate
+// is ambiguous, we reject it and show no Google rating rather than the wrong one.
+
+// Types that UNAMBIGUOUSLY mark a residence we can attach building reviews to.
+const STRONG_RESIDENTIAL_TYPES = new Set(['apartment_complex', 'apartment_building']);
+
+// Types whose reviews are NOT about living in the building. Note this now
+// includes `real_estate_agency` (a brokerage / leasing / property-management
+// OFFICE — its reviews belong on a FIRM profile, not a building) and `lodging`
+// (a hotel — not an apartment). A strong-residential type overrides these; a
+// generic address point does not.
+const DISALLOWED_TYPES = new Set([
+  'bar', 'night_club', 'restaurant', 'cafe', 'food', 'meal_takeaway',
+  'meal_delivery', 'liquor_store', 'bakery', 'movie_theater', 'casino',
+  'bowling_alley', 'stadium', 'tourist_attraction', 'amusement_park',
+  'art_gallery', 'museum', 'gym', 'spa', 'beauty_salon', 'hair_care',
+  'store', 'clothing_store', 'shoe_store', 'book_store', 'furniture_store',
+  'convenience_store', 'supermarket', 'shopping_mall', 'gas_station',
+  'car_repair', 'car_dealer', 'church', 'place_of_worship', 'school',
+  'university', 'hospital', 'pharmacy', 'doctor', 'dentist', 'bank', 'atm',
+  'lawyer', 'insurance_agency', 'accounting', 'library', 'park', 'zoo',
+  'aquarium', 'storage', 'moving_company',
+  'real_estate_agency', 'lodging', // brokerage / leasing office & hotel — belong elsewhere
+]);
+
+// Name tokens that betray a non-residential business even when Google's types
+// are generic (only point_of_interest/establishment).
+const VENUE_NAME_RE = /\b(bar|grill|tavern|pub|lounge|club|hall|theat(?:re|er)|cantina|brewery|taproom|winery|distillery|cafe|coffee|restaurant|kitchen|pizzeria|diner|hotel|inn|motel|hostel|church|temple|mosque|synagogue|school|academy|university|college|salon|spa|gym|fitness|market|deli|bakery|realty|realtors?|brokerage|property management|management|leasing|law|attorney|dental|dentist|clinic|pharmacy|bank|credit union|museum|gallery|storage)\b/i;
+// Name tokens that reinforce a residence.
+const RESIDENTIAL_NAME_RE = /\b(apartments?|residences?|lofts?|towers?|flats?|commons|manor|terrace|gardens?|courts?|the\s+\w+)\b/i;
+// The only types allowed for a place whose name is neutral (no residential and
+// no venue signal): a plain address point with no business meaning.
+const GENERIC_OK = new Set(['premise', 'subpremise', 'point_of_interest', 'establishment', 'street_address', 'geocode', 'route']);
+
+// Decide whether a Google Place is a building we can attach reviews to.
+// Multi-signal — types are authoritative, then name, then a strong-residential
+// override. Anything ambiguous resolves to REJECT.
+function isBuildingResidentialCandidate(place) {
+  const types = Array.isArray(place && place.types) ? place.types : [];
+  const name = String((place && place.name) || '');
+  if (types.some((t) => STRONG_RESIDENTIAL_TYPES.has(t))) return true; // apartment_complex etc.
+  if (types.some((t) => DISALLOWED_TYPES.has(t))) return false;        // bar / office / hotel / shop
+  if (VENUE_NAME_RE.test(name)) return false;                          // business name gives it away
+  if (RESIDENTIAL_NAME_RE.test(name)) return true;                     // "…Apartments/Towers/Lofts"
+  // Neutral name: only accept a bare address point with no business type at all.
+  return types.length > 0 && types.every((t) => GENERIC_OK.has(t));
+}
+
+// Leading street number, e.g. "540 N State St" -> "540". (declared above)
+// Significant street-name tokens: drop the number, directionals, street-type
+// suffixes, unit markers, and city/state. "2206 N California Ave, Chicago, IL"
+// -> ["california"].
+const ADDR_STOPWORDS = new Set([
+  'n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw', 'north', 'south', 'east', 'west',
+  'st', 'street', 'ave', 'avenue', 'blvd', 'boulevard', 'rd', 'road', 'dr',
+  'drive', 'ln', 'lane', 'ct', 'court', 'pl', 'place', 'ter', 'terrace',
+  'pkwy', 'parkway', 'hwy', 'way', 'sq', 'square', 'cir', 'circle',
+  'chicago', 'il', 'illinois', 'usa', 'ste', 'suite', 'unit', 'apt', 'fl', 'floor', '#',
+]);
+function streetTokens(addr) {
+  return String(addr || '').toLowerCase()
+    .replace(/[.,]/g, ' ')
+    .split(/\s+/)
+    .filter((t) => t && !/^\d+$/.test(t) && !ADDR_STOPWORDS.has(t));
+}
+
+// The candidate's own address must carry the SAME street number AND at least one
+// of the query's street-name tokens — so "2206 N California Ave" never matches a
+// rated place at "2206 W Chicago Ave" (same number, different street).
+function addressMatches(candidateAddr, queryAddr) {
+  const num = streetNumber(queryAddr);
+  if (!num) return false;
+  const ca = String(candidateAddr || '').toLowerCase();
+  if (!new RegExp('(^|\\D)' + num + '(\\D|$)').test(ca)) return false;
+  const qt = streetTokens(queryAddr);
+  if (!qt.length) return true; // nothing to compare on → number is enough
+  return qt.some((t) => ca.includes(t));
+}
+
 async function getGoogle(address) {
   if (process.env.MOCK === '1') return mockGoogle(address);
   if (!KEY) return null; // not configured -> skip this source
@@ -56,45 +142,33 @@ async function getGoogle(address) {
     return null;
   }
 
-  // Only listings that actually carry a rating are useful to us.
-  const rated = (json.results || []).filter(
-    (r) => typeof r.rating === 'number' && r.user_ratings_total > 0
+  // Keep only rated listings that read as a residence (not a bar/venue/shop/
+  // office/hotel), so a rental listing never inherits the wrong reviews.
+  const eligible = (json.results || []).filter(
+    (r) =>
+      typeof r.rating === 'number' &&
+      r.user_ratings_total > 0 &&
+      isBuildingResidentialCandidate(r)
   );
-  if (!rated.length) return null;
+  if (!eligible.length) return null;
 
-  // Guard against a nearby-but-wrong apartment: prefer a rated listing whose
-  // own formatted address begins with the same street number we searched for.
-  const num = streetNumber(address);
-  let top = null;
-  if (num) {
-    top = rated.find((r) => {
-      const fa = String(r.formatted_address || r.vicinity || '');
-      // match the number as a standalone token at the start of the address
-      return new RegExp('(^|\\b)' + num + '\\b').test(fa);
-    });
-  }
-  // Fall back to the strongest rated result only when nothing matched by number
-  // AND the top result is clearly a building (many ratings), to avoid noise.
-  if (!top) {
-    const strong = rated[0];
-    if (strong && strong.user_ratings_total >= 15) top = strong;
-  }
+  // The chosen place must actually BE this address — same street number AND the
+  // same street name. No loose "strongest nearby result" fallback: a wrong
+  // Google rating is worse than none, so ambiguity returns null.
+  const top = eligible.find((r) => addressMatches(r.formatted_address || r.vicinity, address)) || null;
   if (!top) return null;
 
-  // Place Details for a few review snippets + photo references + the property's
-  // official website (best effort).
+  // Place Details for a few review snippets + photo references (best effort).
   let reviews = [];
   let photoRefs = [];
-  let website = null;
   let placeUrl = 'https://www.google.com/maps/place/?q=place_id:' + top.place_id;
   try {
     const detUrl =
       'https://maps.googleapis.com/maps/api/place/details/json' +
       '?place_id=' + top.place_id +
-      '&fields=url,website,reviews,photos&key=' + KEY;
+      '&fields=url,reviews,photos&key=' + KEY;
     const det = (await (await fetch(detUrl)).json()).result || {};
     if (det.url) placeUrl = det.url;
-    if (det.website && /^https?:\/\//i.test(det.website)) website = det.website;
     reviews = (det.reviews || []).map((r) => ({
       author: r.author_name,
       rating: r.rating,
@@ -113,7 +187,6 @@ async function getGoogle(address) {
     rating: top.rating,
     count: top.user_ratings_total || 0,
     url: placeUrl,
-    website,
     reviews,
     photoRefs,
   };
@@ -126,7 +199,6 @@ function mockGoogle(address) {
     rating: 4.1,
     count: 128,
     url: 'https://maps.google.com/?cid=example',
-    website: 'https://www.example.com',
     reviews: [
       { author: 'Jordan P.', rating: 5, text: 'Management is responsive and the building is well kept.', time: 1719792000, url: null },
       { author: 'Mia R.', rating: 2, text: 'Heat was inconsistent last winter and repairs were slow.', time: 1707004800, url: null },
@@ -135,4 +207,4 @@ function mockGoogle(address) {
   };
 }
 
-module.exports = { getGoogle };
+module.exports = { getGoogle, isBuildingResidentialCandidate, addressMatches };

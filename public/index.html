@@ -173,6 +173,9 @@ h1.page-t{font-size:1.65rem; font-weight:900; letter-spacing:-.02em; margin:2px 
 .hero .grad{position:absolute; inset:0; background:linear-gradient(180deg,transparent 30%,rgba(0,0,0,.62))}
 .hero .htext{position:relative; color:#fff; text-shadow:0 1px 12px rgba(0,0,0,.4)}
 .hero .htext .name{font-size:1.5rem; font-weight:900; letter-spacing:-.02em; line-height:1.06}
+/* Entity page titles are real <h1>s (visible). Reset UA h1 margin so promoting
+   the visible building/company/neighborhood name to an h1 changes nothing visually. */
+.hero .htext h1.name,.acct-hero h1.h{margin:0}
 .hero .htext .addr{font-size:13.5px; opacity:.95; margin-top:3px}
 .card{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); box-shadow:var(--shadow-sm)}
 .card + .card{margin-top:16px}
@@ -631,6 +634,14 @@ body{background:var(--paper)}
 .ptab:hover{color:var(--ink)}
 .ptab.on{color:var(--heat-deep);border-bottom-color:var(--heat)}
 
+/* --- inline submission errors (P1) --- */
+.form-error{background:#FCEBEA;border:1px solid #E7A9A2;color:#8E2A20;border-radius:10px;padding:10px 13px;font-size:13.5px;line-height:1.45;margin:2px 0 4px}
+:root[data-theme="dark"] .form-error,:root:not([data-theme="light"]) .form-error{background:#3a1a17;border-color:#7a3a33;color:#f3b4ac}
+button[aria-busy="true"]{opacity:.7;cursor:progress}
+.beta-note{background:var(--surface-2);border:1px dashed var(--line-strong);border-radius:10px;padding:9px 13px;font-size:12.5px;color:var(--ink-soft);display:inline-flex;gap:6px;align-items:center}
+/* visible keyboard focus (P5) */
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,[tabindex]:focus-visible{outline:2.5px solid var(--azure);outline-offset:2px;border-radius:4px}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 /* --- editorial summary --- */
 .editorial{font-family:var(--display);font-weight:600;font-size:1.28rem;line-height:1.42;letter-spacing:-.01em;color:var(--ink);margin:6px 0 4px;max-width:60ch}
 @media(max-width:600px){.editorial{font-size:1.12rem}}
@@ -662,7 +673,10 @@ body{background:var(--paper)}
 let CHI={buildings:[],hoods:[],bbox:null,hoodStats:[],generated:''};
 async function loadCHI(){const b64=document.getElementById('chi-data').textContent.trim();const bin=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));const stream=new Blob([bin]).stream().pipeThrough(new DecompressionStream('gzip'));const txt=await new Response(stream).text();return JSON.parse(txt);}
 const $=(s,r=document)=>r.querySelector(s);
-const now=()=>Date.now(); const DAY=86400000; const clampN=(v,a,b)=>Math.max(a,Math.min(b,v));
+const now=()=>Date.now(); const DAY=86400000;
+/* BETA: free, invite-only beta. Payments, lease verification and paid unlocks are
+   gated OFF until real server-side accounts/entitlements exist. Reviews are free. */
+const BETA=true; const clampN=(v,a,b)=>Math.max(a,Math.min(b,v));
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const GRADS=[['#3A6EA5','#1E3A5F'],['#C6461A','#7E2A10'],['#2E7D5B','#154736'],['#6D4C8A','#3A2653'],['#B77C12','#6E4A0A'],['#417A9B','#234656'],['#A23E4E','#5E222C'],['#4A5A6B','#28323D']];
 const EMO=['🏢','🏠','🏬','🧱','🌆','🏙️'];
@@ -889,9 +903,36 @@ async function comPull(){const base=comBase();if(base===null)return;try{
   if(d.now)COM._lastTs=d.now;comIndex();clearCaches();
   if(typeof render==='function'&&document.getElementById('app'))render();
 }catch(e){}}
-async function comPush(kind,payload){const base=comBase();if(base===null)return;try{
-  await fetch(base+'/api/'+kind,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-}catch(e){}}
+/* comPush now RETURNS the outcome so callers can await real success/failure.
+   {ok:true,data} on 2xx; {ok:false,error,status?} on non-2xx / timeout / network /
+   malformed. On the no-backend artifact host it resolves {ok:true,offline:true}. */
+async function comPush(kind,payload){const base=comBase();
+  if(base===null)return {ok:true,offline:true};
+  const ctl=(typeof AbortController!=='undefined')?new AbortController():null;
+  const timer=ctl?setTimeout(()=>ctl.abort(),12000):null;
+  try{
+    const res=await fetch(base+'/api/'+kind,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),signal:ctl?ctl.signal:undefined});
+    if(timer)clearTimeout(timer);
+    let data=null; try{data=await res.json();}catch(e){data=null;}
+    if(!res.ok)return {ok:false,status:res.status,error:(data&&data.error)||('Request failed ('+res.status+').')};
+    return {ok:true,data};
+  }catch(e){
+    if(timer)clearTimeout(timer);
+    return {ok:false,error:(e&&e.name==='AbortError')?'The request timed out. Please try again.':'Network error — check your connection and try again.'};
+  }}
+/* Submit-guard: prevents double-submits, disables the button + shows a pending
+   label, and renders an inline, screen-reader-announced error with retry. */
+const _busy={};
+function beginSubmit(name,btnId,errId,pendingLabel){
+  if(_busy[name])return false; _busy[name]=true;
+  const btn=btnId&&$('#'+btnId); if(btn){btn.dataset.orig=btn.dataset.orig||btn.innerHTML;btn.disabled=true;btn.setAttribute('aria-busy','true');btn.innerHTML=esc(pendingLabel||'Working…');}
+  const err=errId&&$('#'+errId); if(err){err.style.display='none';err.textContent='';}
+  return true;}
+function endSubmit(name,ok,btnId,errId,errMsg){
+  _busy[name]=false;
+  const btn=btnId&&$('#'+btnId); if(btn){btn.disabled=false;btn.removeAttribute('aria-busy');if(btn.dataset.orig)btn.innerHTML=btn.dataset.orig;}
+  const err=errId&&$('#'+errId); if(err){ if(ok){err.style.display='none';} else {err.textContent=errMsg||'Something went wrong. Please try again.';err.style.display='block';} }
+}
 function comReviews(bid){return (COM.byB[bid]&&COM.byB[bid].reviews)||[];}
 function comIssues(bid){return (COM.byB[bid]&&COM.byB[bid].issues)||[];}
 function comQA(bid){return (COM.byB[bid]&&COM.byB[bid].qa)||[];}
@@ -926,9 +967,10 @@ let violSort='new',violSortFor=null,violShowAll=false,violShowAllFor=null;
 function setViolSort(v,bid){violSort=v;violSortFor=bid;render();}
 function toggleViolAll(bid){violShowAll=!(violShowAllFor===bid&&violShowAll);violShowAllFor=bid;render();}
 function violationsCard(b){if(b.demo)return '';const bid=b.id;fetchViol(b);const v=_violCache[bid];
-  const wrap=inner=>`<div class="card"><div class="card-h"><span class="t">Violation history</span></div><div class="card-b">${inner}</div></div>`;
+  const wrap=inner=>`<div class="card"><div class="card-h"><span class="t">Violation history</span></div><div class="card-b" aria-live="polite">${inner}</div></div>`;
   if(v===undefined)return wrap('<p class="small-note" style="padding:6px 0">Loading City of Chicago violation records…</p>');
-  if(v.error||!v.violations||!v.violations.length)return wrap('<p class="small-note" style="padding:6px 0">No itemized violation records on file for this exact address in the City dataset.</p>');
+  if(v.error)return wrap('<p class="small-note" style="padding:6px 0">We couldn\'t reach the City of Chicago open-data service just now, so we\'re showing our stored counts above. Please try again shortly.</p>');
+  if(!v.violations||!v.violations.length)return wrap('<p class="small-note" style="padding:6px 0">No individual violation records matched this exact address in the City dataset.</p>');
   const cap=s=>{s=String(s||'').toLowerCase();return s.charAt(0).toUpperCase()+s.slice(1);};
   const clip=(s,n)=>{s=String(s||'');return s.length>n?s.slice(0,n-1)+'…':s;};
   const isOpen=x=>!/COMPLIED|CLOSED|NO ENTRY/i.test(x.status);
@@ -948,7 +990,7 @@ function reviewsFor(bid){const base=isDemo()?DEMO_REVIEWS.concat(EXT_DEMO_REVIEW
 function ratingOf(bid){if(_rCache[bid])return _rCache[bid];const rs=reviewsFor(bid);const r=rs.length?{avg:rs.reduce((a,x)=>a+x.overall,0)/rs.length,n:rs.length}:{avg:0,n:0};return _rCache[bid]=r;}
 function subAvgOf(bid){const rs=reviewsFor(bid);const o={};REVIEW_DIMS.forEach(d=>{const v=rs.map(r=>r.sub&&r.sub[d.k]).filter(x=>x>0);o[d.k]=v.length?v.reduce((a,b)=>a+b,0)/v.length:0;});return o;}
 function riskOf(b){if(b.demo){const d=b.data;let s=d.viol+d.evict*2+(d.problem?4:0);if(d.problem||s>=8)return 2;if(s>=3)return 1;return 0;}if(b.open>=10)return 2;if(b.open>=3)return 1;return 0;}
-const RISK_LABEL=['Good standing','Watch list','High risk'],RISK_CLASS=['good','watch','risk'];
+const RISK_LABEL=['0–2 open','3–9 open','10+ open'],RISK_CLASS=['good','watch','risk'];
 function scoreOf(b){if(_sCache[b.id]!=null)return _sCache[b.id];let s;if(b.demo){const d=b.data;s=100-d.viol*6-d.evict*10-(d.problem?18:0);}else{s=100-Math.min(85,b.open*2.5);if(b.open>=3)s=Math.min(s,80);}const r=ratingOf(b.id);if(r.n)s=s*0.6+(r.avg/5*100)*0.4;return _sCache[b.id]=clampN(Math.round(s),3,99);}
 function scoreBreakdown(b){const r=ratingOf(b.id);let rec;if(b.demo){const d=b.data;rec=100-d.viol*6-d.evict*10-(d.problem?18:0);}else{rec=100-Math.min(85,b.open*2.5);if(b.open>=3)rec=Math.min(rec,80);}rec=clampN(Math.round(rec),3,100);
   const hasR=r.n>0;const rev=hasR?Math.round(r.avg/5*100):null;
@@ -963,7 +1005,9 @@ function portfolioOf(b){if(b.demo){const s=DEMO.filter(x=>x.co===b.co);return{ke
 /* ===== management-company naming (shared, keyed by property group) ===== */
 function mgrKey(b){return 'pg'+((b&&b.pg)||'');}
 function managerNameOf(b){if(!b)return null;if(b.demo)return b.co||null;const k=mgrKey(b);return (S.names&&S.names[k])||(COM.names&&COM.names[k])||null;}
-function nameManager(bid){const b=bById(bid);if(!b||b.demo||!b.pg)return;const k=mgrKey(b);const cur=(S.names&&S.names[k])||'';const v=prompt('Who manages these buildings? Name the property-management company (e.g. "Pangea", "Planned Property Management") so renters can look them up:',cur);if(v===null)return;if(!S.names)S.names={};const t=v.trim();if(t){S.names[k]=t;comPush('names',{b:k,name:t,by:(S.handle||'A neighbor')});}else delete S.names[k];persist();render();toast(t?'Company named — now searchable across the web':'Name removed');}
+function nameManager(bid){const b=bById(bid);if(!b||b.demo||!b.pg)return;const k=mgrKey(b);const cur=(S.names&&S.names[k])||'';const v=prompt('Who manages these buildings? Name the property-management company (e.g. "Pangea", "Planned Property Management") so renters can look them up:',cur);if(v===null)return;if(!S.names)S.names={};const t=v.trim();if(!t){delete S.names[k];persist();render();toast('Name removed');return;}
+  S.names[k]=t;persist();render();
+  comPush('names',{b:k,name:t,by:(S.handle||'A neighbor')}).then(res=>{if(!res.ok){delete S.names[k];persist();render();toast(res.error||'Could not save the name. Try again.');}else toast('Company named — now searchable.');});}
 /* ===== "Around the web" deep links (no API needed — opens each site's live search) ===== */
 function webLinks(name,isCompany){const chi=' Chicago';const enc=s=>encodeURIComponent(s);
   return {
@@ -1008,9 +1052,12 @@ function signupBox(ctx,variant){
 function postSignup(ctx){const el=document.getElementById('su-'+ctx);if(!el)return;const email=(el.value||'').trim();
   if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){toast('Enter a valid email');return;}
   const bid=(nav.view==='building'||nav.view==='landlord')?nav.id:null;
-  comPush('signup',{email,ctx,b:bid});
-  try{localStorage.setItem('radiator.signedup','1');}catch(e){}
-  toast('You\'re on the list — thanks! 🎉');render();
+  if(_busy['signup-'+ctx])return; _busy['signup-'+ctx]=true;
+  const btn=el.parentNode&&el.parentNode.querySelector('button'); const orig=btn&&btn.innerHTML; if(btn){btn.disabled=true;btn.setAttribute('aria-busy','true');btn.innerHTML='Adding…';}
+  comPush('signup',{email,ctx,b:bid}).then(res=>{_busy['signup-'+ctx]=false; if(btn){btn.disabled=false;btn.removeAttribute('aria-busy');if(orig)btn.innerHTML=orig;}
+    if(!res.ok){toast(res.error||'Could not add you to the list. Try again.');return;}
+    try{localStorage.setItem('radiator.signedup','1');}catch(e){}
+    toast('You\'re on the launch list — thanks.');render();});
 }
 function aroundWebCard(name,isCompany,site){if(!name)return '';const L=webLinks(name,isCompany);
   const btn=(href,label,sub,ic)=>`<a class="webbtn" href="${href}" target="_blank" rel="noopener noreferrer"><span class="wbi">${ic}</span><span class="wbtxt"><span class="wbt">${label}</span><span class="wbs">${sub}</span></span><span class="wbx">↗</span></a>`;
@@ -1047,7 +1094,7 @@ function bPhotos(bid){const out=[];
   const seen={};return out.filter(p=>p&&!seen[p]&&(seen[p]=1));}
 function fmtFull(d){if(!d)return '';const t=Date.parse(d+'T00:00:00');if(isNaN(t))return d;const dt=new Date(t);const M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return M[dt.getMonth()]+' '+dt.getDate()+', '+dt.getFullYear();}
 function todayISO(){const dt=new Date(now());const p=n=>String(n).padStart(2,'0');return dt.getFullYear()+'-'+p(dt.getMonth()+1)+'-'+p(dt.getDate());}
-function hasAccess(){return S.unlockedUntil>now();}
+function hasAccess(){return BETA?true:(S.unlockedUntil>now());}
 function accessDaysLeft(){return Math.max(0,Math.ceil((S.unlockedUntil-now())/DAY));}
 function summaryOf(b){
   if(b.demo){const d=b.data;return `Sample building for demonstration. It carries ${d.viol} illustrative open violation${d.viol===1?'':'s'}${d.evict?' and '+d.evict+' eviction filing'+(d.evict===1?'':'s'):''}${d.problem?', and is flagged on a sample problem-landlord list':''}. Switch to Live mode for real City of Chicago records.`;}
@@ -1065,7 +1112,7 @@ function summaryOf(b){
   return parts.join('');
 }
 function fmtDate(d){if(!d)return '—';const[y,m]=d.split('-');const M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return (M[(+m||1)-1]||'')+' '+y;}
-function starsHTML(v){const p=clampN(v/5*100,0,100);return `<span class="stars" role="img" aria-label="${v.toFixed(1)} of 5"><span class="stars-base">★★★★★</span><span class="stars-fill" style="width:${p}%">★★★★★</span></span>`;}
+function starsHTML(v){const p=clampN(v/5*100,0,100);return `<span class="stars" role="img" aria-label="${v.toFixed(1)} out of 5 stars"><span class="stars-base">★★★★★</span><span class="stars-fill" style="width:${p}%">★★★★★</span></span>`;}
 function initialOf(s){s=(s||'').trim();return s?s[0].toUpperCase():'R';}
 function flagHTML(b){const r=riskOf(b);return `<span class="flag ${RISK_CLASS[r]}"><span class="dot"></span>${RISK_LABEL[r]}</span>`;}
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('show'),2600);}
@@ -1078,8 +1125,11 @@ function urlFor(view,id){
   if(view==='landlord'){const b=bById(id);const pg=b&&b.pg;return pg?('/company/'+pg):('/company/'+id);}
   if(view==='neighborhood')return '/neighborhood/'+urlSlug(id||'');
   if(view==='firm')return '/firm/'+(id||'');
-  if(['explore','map','compare','neighborhoods','tools','pricing','saved','guide','profile','terms','privacy','guidelines','moderate','directory'].includes(view))return '/'+view;
+  if(['explore','map','compare','neighborhoods','tools','pricing','saved','guide','profile','terms','privacy','guidelines','directory'].includes(view))return '/'+view;
   if(view==='write'||view==='issue')return '/'+view+(id?('/'+id):'');
+  // A not-found view keeps the URL that was actually requested — so the address
+  // bar and canonical stay self-referential instead of collapsing to the homepage.
+  if(view==='notfound')return (typeof location!=='undefined'&&(location.pathname+location.search))||'/';
   return '/';
 }
 function syncURL(replace){try{const u=urlFor(nav.view,nav.id);if((location.pathname+location.search)!==u){history[replace?'replaceState':'pushState']({v:nav.view,id:nav.id},'',u);}}catch(e){}}
@@ -1089,11 +1139,11 @@ function setNavFromPath(path){
   const seg=parts[0];
   if(seg==='building'){nav.view='building';nav.id=parts[1]||null;return;}
   if(seg==='firm'){nav.view='firm';nav.id=parts[1]||null;return;}
-  if(seg==='company'){const pg=parts[1];const b=REAL.find(x=>String(x.pg)===String(pg));if(b){nav.view='landlord';nav.id=b.id;return;}nav.view='explore';nav.id=null;return;}
-  if(seg==='neighborhood'){const s=parts[1]||'';const h=HOODS.find(x=>urlSlug(x)===s);nav.view=h?'neighborhood':'neighborhoods';nav.id=h||null;return;}
-  const known=['explore','map','compare','neighborhoods','tools','pricing','saved','guide','profile','write','issue','terms','privacy','guidelines','moderate','directory'];
+  if(seg==='company'||seg==='landlord'){const pg=parts[1];const b=REAL.find(x=>String(x.pg)===String(pg));if(b){nav.view='landlord';nav.id=b.id;return;}nav.view='notfound';nav.id=null;return;}
+  if(seg==='neighborhood'){const s=parts[1]||'';const h=HOODS.find(x=>urlSlug(x)===s);nav.view=h?'neighborhood':'notfound';nav.id=h||null;return;}
+  const known=['explore','map','compare','neighborhoods','tools','pricing','saved','guide','profile','write','issue','terms','privacy','guidelines','directory'];
   if(known.includes(seg)){nav.view=seg;nav.id=parts[1]||null;return;}
-  nav.view='home';nav.id=null;
+  nav.view='notfound';nav.id=null;
 }
 function go(v,id){nav.prev.push({view:nav.view,id:nav.id});nav.view=v;nav.id=id||null;scrollTo(0,0);syncURL();render();}
 function back(){const p=nav.prev.pop();if(p){nav.view=p.view;nav.id=p.id;}else{nav.view='explore';nav.id=null;}scrollTo(0,0);syncURL();render();}
@@ -1125,11 +1175,11 @@ function render(){
   const inner = v==='home'?viewHome() : v==='building'?viewBuilding(nav.id) : v==='landlord'?viewLandlord(nav.id) : v==='write'?viewWrite(nav.id) : v==='issue'?viewIssue(nav.id)
     : v==='map'?viewMap() : v==='compare'?viewCompare() : v==='neighborhoods'?viewNeighborhoods() : v==='neighborhood'?viewNeighborhood(nav.id)
     : v==='tools'?viewTools() : v==='guide'?viewGuide() : v==='saved'?viewSaved() : v==='pricing'?viewPricing() : v==='profile'?viewProfile()
-    : v==='terms'?viewLegal('terms') : v==='privacy'?viewLegal('privacy') : v==='guidelines'?viewLegal('guidelines') : v==='moderate'?viewModerate() : v==='directory'?viewDirectory() : v==='firm'?viewFirm(nav.id) : viewExplore();
+    : v==='terms'?viewLegal('terms') : v==='privacy'?viewLegal('privacy') : v==='guidelines'?viewLegal('guidelines') : v==='moderate'?viewModerate() : v==='directory'?viewDirectory() : v==='firm'?viewFirm(nav.id) : v==='notfound'?viewNotFound() : viewExplore();
   const isHome = v==='home';
   const banner = isHome?'' : isDemo()?`<div class="samplebanner demo">Showcase mode · fictional buildings &amp; sample reviews — switch to Live in Profile</div>`
     :`<div class="samplebanner live">Live City of Chicago building records · ${REAL.length} buildings · updated ${esc(CHI.generated||'')}</div>`;
-  const showBack = ['building','landlord','write','issue','neighborhood','guide','terms','privacy','guidelines','moderate','firm'].includes(v);
+  const showBack = ['building','landlord','write','issue','neighborhood','guide','terms','privacy','guidelines','firm','notfound'].includes(v);
   $('#app').innerHTML=`
     ${topnav()}
     <main class="page ${(v==='map'||v==='compare')?'wide':''}">
@@ -1143,14 +1193,57 @@ function render(){
   if(v==='issue') initIssueForm();
   if(v==='tools'){ calcDeposit(); calcNotice(); }
   var _ssr=document.getElementById('ssr-content'); if(_ssr) _ssr.remove(); // drop server SEO block once the app renders
-  document.title = seoTitle(nav.view,nav.id);
+  updateHead();
 }
-function seoTitle(view,id){
-  if(view==='building'){const b=bById(id);if(b)return (nameOf(b)||b.addr)+' — reviews & city records | Radiator';}
-  if(view==='landlord'){const b=bById(id);const m=b&&managerNameOf(b);if(m)return m+' — Chicago landlord reviews | Radiator';}
-  if(view==='pricing')return 'Pricing | Radiator';
-  return 'Radiator — Check a Chicago building before you sign';
+/* ===== route-aware metadata (P4): one source of truth for title / description /
+   canonical / Open Graph / JSON-LD, applied to <head> after every client nav so
+   the head never stays stuck on the previously-viewed page. ===== */
+const DEF_TITLE='Radiator — Check a Chicago building before you sign';
+const DEF_DESC='Real tenant reviews, rent history, and official City of Chicago records — one honest page per Chicago address.';
+function metaFor(view,id){
+  const origin=(typeof location!=='undefined'&&location.origin)||'https://getradiator.com';
+  let canonical=origin+(urlFor(view,id)||'/');
+  let title=DEF_TITLE,desc=DEF_DESC,jsonld=null,robots=null;
+  if(view==='building'){const b=bById(id);if(b){const nm=nameOf(b)||b.addr;title=nm+(b.hood?(', '+b.hood):'')+' — reviews & city records | Radiator';desc='Radiator Score, open City of Chicago violations, tenant reviews and rent history for '+b.addr+(b.hood?(' in '+b.hood):'')+', Chicago.';jsonld={'@context':'https://schema.org','@type':'ApartmentComplex',name:nm,address:{'@type':'PostalAddress',streetAddress:b.addr,addressLocality:'Chicago',addressRegion:'IL'},url:canonical};}}
+  else if(view==='firm'){const f=firmById(id);if(f){title=f.name+' — Chicago property management reviews | Radiator';desc='What Chicago renters and the web say about '+f.name+' — '+(f.kind||'Property management')+'. Reputation links, reviews, and tenant-tagged buildings on Radiator.';jsonld={'@context':'https://schema.org','@type':'Organization',name:f.name,url:canonical,areaServed:'Chicago, IL'};}}
+  else if(view==='landlord'){const b=bById(id);const m=b&&managerNameOf(b);title=(m||'Chicago property group')+' — landlord record | Radiator';desc='Buildings, open City violations and tenant reviews across this Chicago property group.';}
+  else if(view==='neighborhood'){title=(id||'Neighborhood')+', Chicago — apartment reviews & building records | Radiator';desc='Building-code records and tenant reviews across '+(id||'this neighborhood')+', Chicago.';}
+  else if(view==='explore'){title='Search Chicago buildings & landlords | Radiator';desc='Search any Chicago address, building, or management company for reviews, violations, and rent history.';}
+  else if(view==='map'){title='Chicago building map | Radiator';desc='Every tracked Chicago building plotted by open City of Chicago violations.';}
+  else if(view==='directory'){title='Rankings — Chicago landlords & buildings | Radiator';desc='Chicago management companies and apartment buildings ranked by open violations and tenant ratings.';}
+  else if(view==='compare'){title='Compare Chicago buildings | Radiator';desc='Compare Chicago buildings side by side on Radiator Score, violations and ratings.';}
+  else if(view==='neighborhoods'){title='Chicago neighborhoods | Radiator';desc='All 77 Chicago community areas by open building-code records.';}
+  else if(view==='pricing'){title='Pricing (coming soon) | Radiator';desc='Radiator is a free, invite-only beta. A preview of future pricing.';}
+  else if(view==='saved'){title='Your watchlist | Radiator';desc='Chicago buildings you are tracking while you hunt.';}
+  else if(view==='tools'||view==='guide'){title='Chicago renter (RLTO) tools | Radiator';desc='Chicago Residential Landlord & Tenant Ordinance tools — deposit interest and notice timelines.';}
+  else if(view==='terms'){title='Terms of Service | Radiator';}
+  else if(view==='privacy'){title='Privacy Policy | Radiator';}
+  else if(view==='guidelines'){title='Community Guidelines | Radiator';}
+  else if(view==='profile'){title='Your profile | Radiator';}
+  else if(view==='notfound'){title='Page not found | Radiator';desc='That page could not be found on Radiator.';jsonld=null;robots='noindex, nofollow';canonical=origin+((typeof location!=='undefined'&&location.pathname)||'/');}
+  return {title,desc,canonical,jsonld,robots};
 }
+function _setMeta(attr,key,val){let el=document.head.querySelector('meta['+attr+'="'+key+'"]');if(!el){el=document.createElement('meta');el.setAttribute(attr,key);document.head.appendChild(el);}el.setAttribute('content',val==null?'':val);}
+function _setLink(rel,href){let el=document.head.querySelector('link[rel="'+rel+'"]');if(!el){el=document.createElement('link');el.setAttribute('rel',rel);document.head.appendChild(el);}el.setAttribute('href',href||'');}
+function updateHead(){const m=metaFor(nav.view,nav.id);
+  document.title=m.title;
+  _setMeta('name','description',m.desc);_setLink('canonical',m.canonical);
+  _setMeta('property','og:type','website');_setMeta('property','og:site_name','Radiator');
+  _setMeta('property','og:title',m.title);_setMeta('property','og:description',m.desc);_setMeta('property','og:url',m.canonical);
+  _setMeta('name','twitter:card','summary');_setMeta('name','twitter:title',m.title);_setMeta('name','twitter:description',m.desc);
+  // robots: noindex invalid/not-found pages; otherwise remove any stale robots tag.
+  if(m.robots){_setMeta('name','robots',m.robots);}else{const rb=document.head.querySelector('meta[name="robots"]');if(rb)rb.remove();}
+  // Drop any server-rendered JSON-LD (it has no id) so exactly ONE block — the
+  // client-managed #ld-json — is ever present after hydration; otherwise a
+  // server-rendered entity page ends up with two ApartmentComplex blocks.
+  document.head.querySelectorAll('script[type="application/ld+json"]:not(#ld-json)').forEach(el=>el.remove());
+  let ld=document.getElementById('ld-json');
+  if(m.jsonld){if(!ld){ld=document.createElement('script');ld.type='application/ld+json';ld.id='ld-json';document.head.appendChild(ld);}ld.textContent=JSON.stringify(m.jsonld);}
+  else if(ld){ld.remove();}
+}
+function viewNotFound(){return `<h1 class="page-t">Page not found</h1>
+  <p class="page-sub">We couldn't find that page. The building, company, or link may have moved or never existed.</p>
+  <div class="btnrow" style="margin-top:8px;gap:10px"><button class="btn primary" style="width:auto;display:inline-flex" onclick="tab('explore')">Search buildings</button><button class="btn outline" style="width:auto;display:inline-flex" onclick="tab('home')">Go home</button></div>`;}
 function topnav(){const v=nav.view;const isSearch=['explore','building','landlord','firm','neighborhood','neighborhoods'].includes(v);
   const item=(view,label,on)=>`<button class="tn-i ${on?'on':''}" onclick="tab('${view}')">${label}</button>`;
   return `<header class="topnav"><div class="tn-in">
@@ -1201,10 +1294,10 @@ function mobtabs(){const v=nav.view;const isExp=['explore','building','landlord'
 /* ============ LEGAL / FOOTER ============ */
 function siteFooter(){return `<footer style="max-width:960px;margin:44px auto 10px;padding:22px 16px 8px;border-top:1px solid var(--line);text-align:center;font-size:12.5px;color:var(--ink-faint);line-height:1.65;font-family:var(--sans)">
   <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:10px">
-    <a onclick="tab('terms')" style="color:var(--ink-soft);cursor:pointer">Terms</a><span>·</span>
-    <a onclick="tab('privacy')" style="color:var(--ink-soft);cursor:pointer">Privacy</a><span>·</span>
-    <a onclick="tab('guidelines')" style="color:var(--ink-soft);cursor:pointer">Community Guidelines</a><span>·</span>
-    <a onclick="tab('pricing')" style="color:var(--ink-soft);cursor:pointer">Pricing</a>
+    <a href="/terms" onclick="tab('terms');return false" style="color:var(--ink-soft)">Terms</a><span>·</span>
+    <a href="/privacy" onclick="tab('privacy');return false" style="color:var(--ink-soft)">Privacy</a><span>·</span>
+    <a href="/guidelines" onclick="tab('guidelines');return false" style="color:var(--ink-soft)">Community Guidelines</a><span>·</span>
+    <a href="/pricing" onclick="tab('pricing');return false" style="color:var(--ink-soft)">Pricing</a>
   </div>
   <div>Reviews on Radiator are the personal experiences and opinions of the people who post them. City-record data reflects what has been reported to the City of Chicago — reports, not verdicts. Radiator provides information, not legal advice. © 2026 Radiator · Chicago</div>
 </footer>`;}
@@ -1290,11 +1383,12 @@ function viewHome(){
       <button class="btn" onclick="go('write',null)">＋ Write your first review</button>
     </div>
     <div style="margin-top:26px">${signupBox('home')}</div>
-    <div class="landing-foot">RADIATOR · CHECK IT BEFORE YOU SIGN · CHICAGO · <a onclick="tab('pricing')">Pricing</a> · <a onclick="tab('terms')">Terms</a> · <a onclick="tab('privacy')">Privacy</a> · <a onclick="tab('guidelines')">Guidelines</a></div>
+    <div class="landing-foot">RADIATOR · CHECK IT BEFORE YOU SIGN · CHICAGO · <a href="/pricing" onclick="tab('pricing');return false">Pricing</a> · <a href="/terms" onclick="tab('terms');return false">Terms</a> · <a href="/privacy" onclick="tab('privacy');return false">Privacy</a> · <a href="/guidelines" onclick="tab('guidelines');return false">Guidelines</a></div>
   </div>`;
 }
 function viewPricing(){const access=hasAccess();
-  return `<h1 class="page-t">Simple pricing, built to grow reviews</h1>
+  return `<h1 class="page-t">Pricing <span style="font-size:.5em;font-weight:700;color:var(--heat-deep);vertical-align:middle;background:var(--heat-soft);padding:4px 10px;border-radius:999px">Coming soon</span></h1>
+  <div class="beta-note" style="margin:0 0 16px">Radiator is a free, invite-only beta. Everything is free right now — the plans below are a preview of future pricing and can't be purchased yet.</div>
   <p class="page-sub">Browsing the records is always free. The best deal isn't a plan at all — <b style="color:var(--ink)">post one honest review and unlock the whole city for 30 days.</b> Radiator makes money on access; the review-to-unlock loop makes the reviews.</p>
   <div class="price-grid">
     <div class="pcard feature"><span class="ribbon">Best deal · free</span><div class="pname">Give-to-get</div><div class="pprice">$0<small> · post 1 review</small></div><div class="ptag">Share your building experience, unlock everyone else's.</div>
@@ -1302,10 +1396,10 @@ function viewPricing(){const access=hasAccess();
       <button class="btn primary full pbtn" onclick="go('write',null)">Write a review</button></div>
     <div class="pcard"><div class="pname">Day pass</div><div class="pprice">$9.99</div><div class="ptag">Touring this weekend and don't want to write yet.</div>
       <ul><li>Everything unlocked for 24 hours</li><li>Every review, city-wide</li><li>No account or commitment</li></ul>
-      <button class="btn outline full pbtn" onclick="openPaywall()">Get a day pass</button></div>
+      <button class="btn outline full pbtn" disabled aria-disabled="true" style="opacity:.6;cursor:not-allowed">Coming soon</button></div>
     <div class="pcard"><div class="pname">Renter</div><div class="pprice">$79<small>/yr</small></div><div class="ptag">Serious hunt across months &amp; neighborhoods.</div>
       <ul><li>Unlimited full access, all year</li><li>Watchlist to track buildings</li><li>Email alerts — new reviews &amp; violations <span style="color:var(--ink-faint)">(coming soon)</span></li><li>Landlord &amp; company profiles</li></ul>
-      <button class="btn outline full pbtn" onclick="openPaywall()">Go yearly</button></div>
+      <button class="btn outline full pbtn" disabled aria-disabled="true" style="opacity:.6;cursor:not-allowed">Coming soon</button></div>
   </div>
   <div class="price-rule">💡 <b>Why give-to-get?</b> Reviews are the scarce, valuable thing — so early on Radiator is priced to maximize reviews, not revenue. A 3-month access pass ($19.99) is also available at checkout for apartment hunts. ${access?'<b style="color:var(--good)">You currently have full access.</b>':'You don\'t have full access yet — writing one review is the fastest way in.'}</div>
   <div class="price-rule" style="border-style:solid;background:linear-gradient(135deg,#2A2320,#3B2C22);color:rgba(255,248,242,.85);border:none">🏢 <b style="color:#fff">Landlords &amp; partners.</b> Claimed building profiles, verified right-of-reply, and relocation/employer partnerships are coming after launch. That's how Radiator stays free and honest for renters.</div>`;}
@@ -1325,15 +1419,27 @@ function companyCard(c){const isFirm=c.type==='firm';const bs=c.buildings||[];co
     <div class="thumb" style="background:linear-gradient(135deg,#4C6FA5,#33507E);border:none;width:100%;display:flex;align-items:center;justify-content:center"><span style="font-size:40px">🏢</span></div>
     <div class="bcard-body"><div class="name">${esc(c.name)}</div><div class="addr">${isFirm?esc(c.kind||'Property management')+(bs.length?' · '+bs.length+' building'+(bs.length===1?'':'s'):''):(bs.length+' building'+(bs.length===1?'':'s')+' on record')}</div>
     <div class="meta">${avg?`<span class="rating-pill">${avg.toFixed(1)} ${starsHTML(avg)} <small>(${rs.length})</small></span>`:`<span class="rating-pill" style="color:var(--ink-faint);font-weight:600">${isFirm?'Company profile':'Management company'}</span>`}<span class="cmpbtn">${isFirm?'View company →':'View portfolio →'}</span></div></div></button>`;}
-function viewFirm(id){const f=firmById(id);if(!f)return '<div class="empty">Company not found</div>';
+function viewFirm(id){const f=firmById(id);if(!f){nav.view='notfound';nav.id=null;return viewNotFound();}
   const bs=firmBuildings(f.name);const rs=firmReviews(id);const avg=rs.length?(rs.reduce((a,r)=>a+r.overall,0)/rs.length):0;
-  return `<div class="acct-hero"><div class="av" style="background:var(--azure)">🏢</div><div><div class="h">${esc(f.name)}</div><div class="s">${esc(f.kind||'Property management')} · Chicago${rs.length?` · ${avg.toFixed(1)}★ (${rs.length} review${rs.length===1?'':'s'})`:''}</div></div></div>
-  <div class="card" style="margin-top:16px"><div class="card-b"><p class="small-note" style="margin:0">Reputation profile for <b>${esc(f.name)}</b>. Radiator doesn't publish which buildings a company runs — tenants tag that over time. See what renters and the wider web say, and if they manage your building, tag it from that building's page.</p></div></div>
+  return `<div class="acct-hero"><div class="av" style="background:var(--azure)">🏢</div><div><h1 class="h">${esc(f.name)}</h1><div class="s">${esc(f.kind||'Property management')} · Chicago${rs.length?` · ${avg.toFixed(1)}★ (${rs.length} review${rs.length===1?'':'s'})`:''}</div></div></div>
+  <div class="sec"><p class="small-note" style="margin:0 0 8px">Reputation profile for <b>${esc(f.name)}</b>, a Chicago property-management company.</p>
+    <div class="src-note" style="margin:0"><b>Where this comes from:</b> the company name and category are <b>seeded from public business listings</b> — Radiator has <b>not</b> verified any ownership or management relationship. The buildings below are <b>tagged by tenants</b>, not confirmed by the company. The “Around the web” links are <b>searches</b> on other sites, shown for research — they are <b>not endorsements</b>.</div>
+    <div style="margin-top:12px"><button class="btn outline sm" style="width:auto;display:inline-flex" onclick="reportFirm('${id}')">⚑ Report incorrect information</button></div>
+  </div>
   ${aroundWebCard(f.name,true)}
-  ${bs.length?`<div class="section-t">Buildings tenants have tagged to ${esc(f.name)} (${bs.length})</div><div class="bgrid">${bs.map(bcard).join('')}</div>`:`<div class="card"><div class="card-b"><div class="empty" style="padding:22px"><div class="em">🏬</div><div class="t">No buildings tagged yet</div><div class="d">Rented from ${esc(f.name)}? Open your building, then use “Name this management company” to tag it — it'll show up here for the next renter.</div><div style="margin-top:14px"><button class="btn primary" style="width:auto;display:inline-flex" onclick="tab('explore')">Find your building</button></div></div></div></div>`}
-  ${rs.length?`<div class="section-t">Tenant reviews (${rs.length})</div>${rs.slice().sort((a,b)=>(b.helpful||0)-(a.helpful||0)).map(revHTML).join('')}`:''}
+  ${bs.length?`<div class="section-t">Buildings tenants have tagged to ${esc(f.name)} (${bs.length})</div><p class="small-note" style="margin:0 0 10px">Tenant-tagged, not company-confirmed. See one that's wrong? <a onclick="reportFirm('${id}')" style="cursor:pointer;text-decoration:underline">Report it</a>.</p><div class="bgrid">${bs.map(bcard).join('')}</div>`:`<div class="sec"><div class="empty" style="padding:22px"><div class="em">🏬</div><div class="t">No buildings tagged yet</div><div class="d">Rented from ${esc(f.name)}? Open your building, then use “Name this management company” to tag it — it'll show up here for the next renter.</div><div style="margin-top:14px"><button class="btn primary" style="width:auto;display:inline-flex" onclick="tab('explore')">Find your building</button></div></div></div>`}
+  ${rs.length?`<div class="section-t">Tenant reviews (${rs.length})</div>${rs.slice().sort((a,b)=>(b.helpful||0)-(a.helpful||0)).map(revHTML).join('')}`:'<div class="sec"><p class="small-note" style="margin:0">No tenant reviews of this company on Radiator yet — so there is no Radiator rating to show.</p></div>'}
   ${siteFooter()}`;
 }
+let _reportDraft={};
+function reportFirm(id){const f=firmById(id);if(!f)return;
+  if(_busy['report-'+id]){toast('Sending your report…');return;}          // no double-submit
+  const reason=prompt('What\'s incorrect about '+f.name+'? (e.g. wrong company, a wrongly-tagged building, a duplicate). We review reports and correct errors.',_reportDraft[id]||'');
+  if(reason===null)return; const t=reason.trim(); if(t.length<3){toast('Please add a little detail.');return;}
+  _reportDraft[id]=t; _busy['report-'+id]=true;                            // preserve input until confirmed
+  comPush('reports',{kind:'company',ref:id,reason:t}).then(res=>{_busy['report-'+id]=false;
+    if(res.ok){delete _reportDraft[id];toast('Thanks — we\'ll review and correct it.');}
+    else toast(res.error||'Could not send the report — your note was kept, press report to retry.');});}
 function viewExplore(){
   let list=buildings();
   if(hoodFilter!=='all')list=list.filter(b=>b.hood===hoodFilter);
@@ -1349,14 +1455,14 @@ function viewExplore(){
   return `<h1 class="page-t">Explore Chicago buildings</h1>
   <p class="page-sub">${isDemo()?'Fictional sample buildings to demonstrate the review experience.':'<b style="color:var(--ink)">Before you sign, check the Radiator.</b> Real tenant experiences, rent history, transit, and official city records for every Chicago building — search a name or address.'}</p>
   <div class="filterbar">
-    <span class="selpill ${hoodFilter!=='all'?'act':''}"><select onchange="setFilter('hood',this.value)"><option value="all">All neighborhoods</option>${hoodsForChips.map(h=>`<option value="${esc(h)}"${hoodFilter===h?' selected':''}>${esc(h)}</option>`).join('')}</select></span>
-    <span class="selpill ${riskFilter!=='all'?'act':''}"><select onchange="setFilter('risk',this.value)"><option value="all">Any risk</option><option value="good"${riskFilter==='good'?' selected':''}>Good standing</option><option value="watch"${riskFilter==='watch'?' selected':''}>Watch list</option><option value="risk"${riskFilter==='risk'?' selected':''}>High risk</option></select></span>
-    <span class="selpill"><select onchange="setFilter('sort',this.value)"><option value="score"${sortBy==='score'?' selected':''}>Top score</option><option value="risk"${sortBy==='risk'?' selected':''}>Highest risk</option><option value="rating"${sortBy==='rating'?' selected':''}>Top rated</option><option value="reviews"${sortBy==='reviews'?' selected':''}>Most reviewed</option><option value="az"${sortBy==='az'?' selected':''}>A–Z</option></select></span>
+    <span class="selpill ${hoodFilter!=='all'?'act':''}"><select aria-label="Filter buildings by neighborhood" onchange="setFilter('hood',this.value)"><option value="all">All neighborhoods</option>${hoodsForChips.map(h=>`<option value="${esc(h)}"${hoodFilter===h?' selected':''}>${esc(h)}</option>`).join('')}</select></span>
+    <span class="selpill ${riskFilter!=='all'?'act':''}"><select aria-label="Filter buildings by open-violation count" onchange="setFilter('risk',this.value)"><option value="all">Any record</option><option value="good"${riskFilter==='good'?' selected':''}>0–2 open</option><option value="watch"${riskFilter==='watch'?' selected':''}>3–9 open</option><option value="risk"${riskFilter==='risk'?' selected':''}>10+ open</option></select></span>
+    <span class="selpill"><select aria-label="Sort buildings" onchange="setFilter('sort',this.value)"><option value="score"${sortBy==='score'?' selected':''}>Top score</option><option value="risk"${sortBy==='risk'?' selected':''}>Highest risk</option><option value="rating"${sortBy==='rating'?' selected':''}>Top rated</option><option value="reviews"${sortBy==='reviews'?' selected':''}>Most reviewed</option><option value="az"${sortBy==='az'?' selected':''}>A–Z</option></select></span>
   </div>
   ${(()=>{const ch=companyMatches(searchQ.trim());return ch.length?`<div class="section-t" style="margin:2px 0 10px">Management companies (${ch.length})</div><div class="bgrid" style="margin-bottom:22px">${ch.map(companyCard).join('')}</div><div class="section-t" style="margin:0 0 10px">Buildings (${list.length.toLocaleString()})</div>`:'';})()}
   <div class="result-meta"><span class="count">${list.length.toLocaleString()} building${list.length===1?'':'s'}${list.length>RENDER_CAP?' · showing '+RENDER_CAP:''}</span></div>
   ${list.length?`<div class="bgrid">${list.slice(0,RENDER_CAP).map(bcard).join('')}</div>${list.length>RENDER_CAP?`<p class="small-note" style="text-align:center;margin-top:18px">Showing the top ${RENDER_CAP} of ${list.length.toLocaleString()} — narrow it with search or a neighborhood filter.</p>`:''}`
-    :`<div class="empty"><div class="em">🔍</div><div class="t">No building on file for “${esc(searchQ||'that')}”</div><div class="d">We track ${REAL.length.toLocaleString()} Chicago buildings that have a city code-enforcement record. Yours may simply have no violation history yet — you can still add it and write the first review.</div><div style="margin-top:16px"><button class="btn primary" style="width:auto;display:inline-flex" onclick="prefillAddr='${esc((searchQ||'').replace(/'/g,''))}';go('write',null)">${IC.plus}Add “${esc(searchQ||'this address')}” &amp; review it</button></div></div>`}`;
+    :(searchQ.trim()?`<div class="empty"><div class="em">🔍</div><div class="t">No building on file for “${esc(searchQ)}”</div><div class="d">We track ${REAL.length.toLocaleString()} Chicago buildings with a City code-enforcement record. Yours may simply have no violation history yet — you can still add it and write the first review.</div><div style="margin-top:16px"><button class="btn primary" style="width:auto;display:inline-flex" onclick="prefillAddr='${esc(searchQ.replace(/'/g,''))}';go('write',null)">${IC.plus}Add “${esc(searchQ)}” &amp; review it</button></div></div>`:`<div class="empty"><div class="em">🔍</div><div class="t">Search a Chicago building or address</div><div class="d">Type an address, building name, or management company above to see its Radiator Score, City records and reviews. We track ${REAL.length.toLocaleString()} buildings.</div></div>`)}`;
 }
 function bcard(b){const r=b._r||ratingOf(b.id);const sc=b._s||scoreOf(b);const g=gradeOf(sc);const seed=hashStr(b.id+b.name);const inCmp=S.compare.includes(b.id);
   const oi=openIssuesFor(b.id).length;const ph=bPhotos(b.id)[0]||svPhoto(b);const dn=nameOf(b);const custom=hasCustomName(b);
@@ -1381,13 +1487,15 @@ function setSrcFilter(s){reviewSrcFilter=s;reviewSrcFilterFor=nav.id;render();}
 function setRecency(r){reviewRecency=r;reviewRecencyFor=nav.id;render();}
 
 /* ============ MAP ============ */
+let mapHood='all',mapRisk='all';
+function setMapFilter(k,v){if(k==='hood')mapHood=v;else if(k==='risk')mapRisk=v;render();}
 function viewMap(){
   return `<h1 class="page-t">Chicago risk map</h1><p class="page-sub">Every tracked building plotted on the city's real neighborhood boundaries, colored by open-violation risk. Filter to a neighborhood to drop pins; click any marker to open it.</p>
   <div class="maplayout">
-    <div><div class="mapbox"><div id="map-main"></div><div class="maplegend"><span><i style="background:var(--good)"></i>Good standing</span><span><i style="background:var(--watch)"></i>Watch</span><span><i style="background:var(--risk)"></i>High risk</span></div></div><div class="mapcap" id="mapcap"></div></div>
+    <div><div class="mapbox"><div id="map-main"></div><div class="maplegend"><span><i style="background:var(--good)"></i>0–2 open</span><span><i style="background:var(--watch)"></i>3–9 open</span><span><i style="background:var(--risk)"></i>10+ open</span></div></div><div class="mapcap" id="mapcap"></div></div>
     <div class="map-side">
-      <div class="selpill" style="width:100%"><select onchange="setFilter('hood',this.value)"><option value="all">All neighborhoods</option>${HOODS.map(h=>`<option value="${esc(h)}"${hoodFilter===h?' selected':''}>${esc(h)}</option>`).join('')}</select></div>
-      <div class="selpill" style="width:100%"><select onchange="setFilter('risk',this.value)"><option value="all">Any risk</option><option value="good"${riskFilter==='good'?' selected':''}>Good standing</option><option value="watch"${riskFilter==='watch'?' selected':''}>Watch list</option><option value="risk"${riskFilter==='risk'?' selected':''}>High risk</option></select></div>
+      <div class="selpill" style="width:100%"><label class="sr-only" for="map-hood">Filter map by neighborhood</label><select id="map-hood" onchange="setMapFilter('hood',this.value)"><option value="all">All neighborhoods</option>${HOODS.map(h=>`<option value="${esc(h)}"${mapHood===h?' selected':''}>${esc(h)}</option>`).join('')}</select></div>
+      <div class="selpill" style="width:100%"><label class="sr-only" for="map-risk">Filter map by open-violation count</label><select id="map-risk" onchange="setMapFilter('risk',this.value)"><option value="all">Any record</option><option value="good"${mapRisk==='good'?' selected':''}>0–2 open</option><option value="watch"${mapRisk==='watch'?' selected':''}>3–9 open</option><option value="risk"${mapRisk==='risk'?' selected':''}>10+ open</option></select></div>
       <div class="hint">Dots are sized and colored by how many open building-code violations each address has on file with the City of Chicago. Bigger red dots = more open violations. ${isDemo()?'<b>Switch to Live mode in Profile to see the real map.</b>':''}</div>
     </div>
   </div>`;
@@ -1397,12 +1505,11 @@ function drawMap(mountId){const mount=$('#'+mountId);if(!mount||!CHI.hoods||!CHI
   const W=1000;const lngSpan=(bb.maxLng-bb.minLng)*kx;const latSpan=(bb.maxLat-bb.minLat);const H=Math.round(W*(latSpan/lngSpan));
   const X=lng=>((lng-bb.minLng)*kx)/lngSpan*W;const Y=lat=>(bb.maxLat-lat)/latSpan*H;
   let list=REAL.slice();
-  if(hoodFilter!=='all')list=list.filter(b=>b.hood===hoodFilter);
-  if(riskFilter!=='all')list=list.filter(b=>RISK_CLASS[riskOf(b)]===riskFilter);
-  if(searchQ.trim()){const q=searchQ.toLowerCase();list=list.filter(b=>(b.addr||'').toLowerCase().includes(q)||(b.hood||'').toLowerCase().includes(q));}
+  if(mapHood!=='all')list=list.filter(b=>b.hood===mapHood);
+  if(mapRisk!=='all')list=list.filter(b=>RISK_CLASS[riskOf(b)]===mapRisk);
   const totalDots=list.length; let sampled=false;
   if(list.length>MAP_CAP){const step=Math.ceil(list.length/MAP_CAP);list=list.filter((_,i)=>i%step===0);sampled=true;}
-  const paths=CHI.hoods.map(h=>{if(!h.ring||h.ring.length<3)return '';const sel=hoodFilter!=='all'&&h.name===hoodFilter;const d='M'+h.ring.map(p=>X(p[0]).toFixed(1)+','+Y(p[1]).toFixed(1)).join('L')+'Z';return `<path class="hoodpath${sel?' sel':''}" d="${d}" data-hood="${esc(h.name)}"/>`;}).join('');
+  const paths=CHI.hoods.map(h=>{if(!h.ring||h.ring.length<3)return '';const sel=mapHood!=='all'&&h.name===mapHood;const d='M'+h.ring.map(p=>X(p[0]).toFixed(1)+','+Y(p[1]).toFixed(1)).join('L')+'Z';return `<path class="hoodpath${sel?' sel':''}" d="${d}" data-hood="${esc(h.name)}"/>`;}).join('');
   const asPins = list.length<=600;
   const marks=list.map(b=>{if(b.lat==null)return '';const r=riskOf(b);const cls=['g','w','r'][r];const x=X(b.lng).toFixed(1);const y=Y(b.lat).toFixed(1);
     if(asPins){const k=(r===2?2.0:r===1?1.7:1.5).toFixed(2);return `<g class="bpin ${cls}" data-id="${b.id}" transform="translate(${x},${y}) scale(${k})"><path d="M0,0 C-6,-10 -6,-16 0,-16 C6,-16 6,-10 0,0 Z"/><circle cx="0" cy="-11" r="2.6" fill="#fff" pointer-events="none"/></g>`;}
@@ -1412,11 +1519,11 @@ function drawMap(mountId){const mount=$('#'+mountId);if(!mount||!CHI.hoods||!CHI
   mount.querySelector('svg').addEventListener('click',e=>{const t=e.target;const pin=t&&t.closest?t.closest('.bpin'):null;
     if(t&&t.classList.contains('bdot')){const id=t.getAttribute('data-id');if(id)go('building',id);}
     else if(pin){const id=pin.getAttribute('data-id');if(id)go('building',id);}
-    else if(t&&t.classList.contains('hoodpath')){const h=t.getAttribute('data-hood');if(h){hoodFilter=h;render();}}});
+    else if(t&&t.classList.contains('hoodpath')){const h=t.getAttribute('data-hood');if(h){mapHood=h;render();}}});
 }
 
 /* ============ BUILDING ============ */
-function viewBuilding(bid){const b=bById(bid);if(!b)return '<div class="empty">Building not found</div>';
+function viewBuilding(bid){const b=bById(bid);if(!b){nav.view='notfound';nav.id=null;return viewNotFound();}
   if(unitFilterFor!==bid){unitFilter='all';unitFilterFor=bid;}
   if(bTabFor!==bid){bTab='overview';bTabFor=bid;}
   if(!b.demo){fetchExt(b);fetchViol(b);} // start live photo/rating + violation lookups ASAP
@@ -1458,9 +1565,10 @@ function viewBuilding(bid){const b=bById(bid);if(!b)return '<div class="empty">B
   }else{dataCard=`<div class="card"><div class="card-h"><span class="t">City of Chicago records</span>${flagHTML(b)}</div><div class="card-b">
     <div class="drow"><span class="dl">Open building violations</span><span class="dv n${b.open===0?0:b.open>=10?2:1}">${b.open}</span></div>
     <div class="drow"><span class="dl">Violations resolved (since '24)</span><span class="dv n0">${b.fixed}</span></div>
+    ${(()=>{const vc=_violCache[b.id];if(vc&&!vc.error&&Array.isArray(vc.violations))return '<div class="src-note" style="margin:2px 0 6px">Open &amp; resolved counts reflect a live City of Chicago lookup for this address.</div>';if(vc&&vc.error)return '<div class="src-note" style="margin:2px 0 6px">Showing our stored counts — the live City lookup is temporarily unavailable.</div>';return '';})()}
     <div class="drow"><span class="dl">Most recent violation</span><span class="dv" style="font-size:12px">${fmtDate(b.last)}</span></div>
     <div class="drow"><span class="dl">City property group</span><span class="dv" style="font-size:12px">#${esc(b.pg||'—')}</span></div>
-    ${pct!=null?`<div class="pctbadge">${(pct.clean||pct.betterPct>=50)?`📊 Safer than <b style="margin:0 -3px">${pct.clean?99:pct.betterPct}%</b> of ${esc(b.hood)} buildings we track`:`⚠️ More open violations than <b style="margin:0 -3px">${pct.worsePct}%</b> of ${esc(b.hood)} buildings we track`}</div>`:''}
+    ${pct!=null?`<div class="pctbadge">${(pct.clean||pct.betterPct>=50)?`Fewer open violations than <b style="margin:0 -3px">${pct.clean?99:pct.betterPct}%</b> of ${esc(b.hood)} buildings we track`:`⚠️ More open violations than <b style="margin:0 -3px">${pct.worsePct}%</b> of ${esc(b.hood)} buildings we track`}</div>`:''}
     ${b.cats&&b.cats.length?`<div class="section-t" style="margin:16px 0 10px">Open-violation issue areas</div><div class="catbars">${b.cats.map(c=>`<div class="catrow"><span class="cl">${esc(c.d)}</span><span class="cb"><i style="width:${clampN(c.c/(b.cats[0].c)*100,8,100)}%"></i></span><span class="cv">${c.c}</span></div>`).join('')}</div>`:''}
     <div class="rlto-note"><b>Your RLTO rights here:</b> Chicago's Residential Landlord &amp; Tenant Ordinance requires 30–120 days written notice before a rent increase, security-deposit interest, and 24-hour notice before entry. <a onclick="go('guide',null)">Read the guide →</a></div>
     <div class="src-note">Real data · City of Chicago Building Violations (dataset 22u3-xenr), pulled ${esc(CHI.generated||'')}.</div></div></div>`;
@@ -1505,13 +1613,22 @@ function viewBuilding(bid){const b=bById(bid);if(!b)return '<div class="empty">B
 
   const ptab=(k,label)=>`<button class="ptab ${bTab===k?'on':''}" onclick="setBTab('${k}')">${label}</button>`;
   const shortCard=`<div class="sec"><p class="summary-txt" style="margin:0;font-size:15px;line-height:1.62;color:var(--ink-soft)">${summaryOf(b)}</p></div>`;
-  const rentTab=(rentCard||unitCard)?(rentCard+unitCard):`<div class="sec"><div class="empty" style="padding:26px"><div class="em">\ud83d\udcb5</div><div class="t">No rent or fee reports yet</div><div class="d">Rent, renewal increases, move-in fees and parking come from tenant reviews. Add yours to start the history.</div><div style="margin-top:14px"><button class="btn primary" style="width:auto;display:inline-flex" onclick="go('write','${bid}')">Add your rent &amp; review</button></div></div></div>`;
+  // When we have no tenant-reported rent yet, point people to where the most
+  // recent asking rent actually lives \u2014 the building's own listing/website when
+  // we know it, otherwise a current-listings search for this address. We never
+  // invent a dollar figure: Radiator does not yet ingest asking rents from
+  // listing sites, so the last *listed* rent is shown on those pages, not here.
+  const rentSite=b.demo?null:extWebsite(bid);
+  const listingLink=rentSite
+    ? `<a class="btn outline sm" style="width:auto;display:inline-flex" href="${esc(rentSite)}" target="_blank" rel="noopener nofollow">See the building's listing &amp; latest rent \u2197</a>`
+    : `<a class="btn outline sm" style="width:auto;display:inline-flex" href="https://www.google.com/search?q=${encodeURIComponent(b.addr+' Chicago apartment for rent')}" target="_blank" rel="noopener nofollow">Search current listings for this address \u2197</a>`;
+  const rentTab=(rentCard||unitCard)?(rentCard+unitCard):`<div class="sec"><div class="empty" style="padding:26px"><div class="em">\ud83d\udcb5</div><div class="t">No tenant rent reports yet</div><div class="d">Radiator builds rent history from tenant reports, so no verified rent is on file for this address yet. The most recent <b>listed</b> rent lives on the building's listing or website \u2014 check there, or add what you paid to start the history.</div><div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;justify-content:center">${listingLink}<button class="btn primary" style="width:auto;display:inline-flex" onclick="go('write','${bid}')">Add your rent &amp; review</button></div></div></div>`;
   const mgmtTab=aroundWebCard(webName,false,b.demo?null:extWebsite(bid))+(showPort?`<div class="sec"><div class="card-h"><span class="t">${b.demo?'Managed by':'Property group'}</span></div><div style="font-weight:700;margin:2px 0 4px;font-size:1.05rem">${esc(port.name)}</div><div class="small-note">${port.buildings.length} building${port.buildings.length===1?'':'s'} the City clusters under shared ownership/management.</div><button class="btn outline sm" style="margin-top:12px;width:auto;display:inline-flex" onclick="go('landlord','${b.id}')">View all ${port.buildings.length} \u2192</button></div>`:'')+((!b.demo)?neighborhoodWebCard(b.hood):'')+`<div class="sec">${signupBox('building')}</div>`;
   const tabs={overview:hotstrip+shortCard+gettingAround+gallery, reviews:unitMenuCard(bid)+subHTML+reviewsSection(b)+qaBlock, records:dataCard+violationsCard(b)+issuesCard, rent:rentTab, mgmt:mgmtTab};
   const tabContent=tabs[bTab]||tabs.overview;
   return `<div class="bprofile">
     <div>
-      <div class="hero ${heroPhoto?'hasimg':''}" style="${gradOf(seed)}">${heroPhoto?`<img class="cover-img" src="${heroPhoto}" alt="" onerror="this.style.display='none'">`:`<span class="hero-emoji">${emoOf(seed)}</span>`}<div class="grad"></div><div class="htext"><div class="name">${esc(dn)}</div><div class="addr">${esc(custom?b.addr:(b.demo?b.addr:b.hood))}</div></div></div>
+      <div class="hero ${heroPhoto?'hasimg':''}" style="${gradOf(seed)}">${heroPhoto?`<img class="cover-img" src="${heroPhoto}" alt="" onerror="this.style.display='none'">`:`<span class="hero-emoji">${emoOf(seed)}</span>`}<div class="grad"></div><div class="htext"><h1 class="name">${esc(dn)}</h1><div class="addr">${esc(custom?b.addr:(b.demo?b.addr:b.hood))}</div></div></div>
       <div class="editorial">${esc(editorialOf(b))}</div>
       <div class="ptabs">${ptab('overview','Overview')}${ptab('reviews','Reviews')}${ptab('records','City Records')}${ptab('rent','Rent & Fees')}${ptab('mgmt','Management')}</div>
       <div>${tabContent}</div>
@@ -1555,7 +1672,10 @@ function replyToReview(rid,bid){
   if(text===null)return; const t=text.trim(); if(t.length<3){toast('Please write a bit more');return;}
   const by=prompt('Your name or the company name (shown with the response):','Property management');
   const rp={id:'rp'+now().toString(36)+Math.floor(Math.random()*1e4).toString(36),b:bid,rid,by:(by||'Property management').trim().slice(0,60),text:t.slice(0,2000),role:'management',ts:now()};
-  if(!S.replies)S.replies=[];S.replies.unshift(rp);persist();comPush('replies',rp);render();toast('Response posted.');
+  if(_busy['reply'])return; _busy['reply']=true;
+  comPush('replies',rp).then(res=>{_busy['reply']=false;
+    if(!res.ok){toast(res.error||'Could not post the response. Try again.');return;}
+    if(!S.replies)S.replies=[];S.replies.unshift(rp);persist();render();toast('Response posted.');});
 }
 function reportReview(id){toast('Thanks — flagged for moderator review.');}
 function issueHTML(i){const dn=daysOpen(i.date);const tier=daysTier(dn);const resolved=i.status==='resolved';const mine=i.mine||(i.by&&i.by===S.handle);
@@ -1565,8 +1685,27 @@ function issueHTML(i){const dn=daysOpen(i.date);const tier=daysTier(dn);const re
     <div class="issue-meta">Reported ${fmtFull(i.date)}${resolved&&i.resolvedDate?' · resolved '+fmtFull(i.resolvedDate):''} · ${esc(i.by||'Anonymous')}</div>
     ${(!resolved&&mine)?`<div class="issue-act"><button class="btn outline sm" style="width:auto;display:inline-flex" onclick="resolveIssue('${i.id}')">Mark resolved</button></div>`:''}</div>`;
 }
-function resolveIssue(id){const i=(S.issues||[]).find(x=>x.id===id);if(i){i.status='resolved';i.resolvedDate=todayISO();persist();comPush('issues',i);render();toast('Marked resolved — nice.');}}
-function addBuildingPhotos(bid){const inp=document.createElement('input');inp.type='file';inp.accept='image/*';inp.multiple=true;inp.onchange=()=>{const files=[...inp.files].slice(0,8);let pending=files.filter(f=>f.type.startsWith('image/')).length;if(!pending){toast('No image selected');return;}files.forEach(f=>{if(f.type.startsWith('image/'))shrink(f,u=>{if(!S.bphotos)S.bphotos={};(S.bphotos[bid]=S.bphotos[bid]||[]).push(u);comPush('photos',{id:'ph'+now().toString(36)+Math.floor(Math.random()*1e4).toString(36),b:bid,photo:u,by:(S.handle||'')});pending--;if(pending<=0){persist();render();toast('Photo added');}});});};inp.click();}
+function resolveIssue(id){const i=(S.issues||[]).find(x=>x.id===id);if(!i)return;i.status='resolved';i.resolvedDate=todayISO();persist();render();
+  comPush('issues',i).then(res=>{if(!res.ok){i.status='open';i.resolvedDate=null;persist();render();toast(res.error||'Could not save — try again.');}else toast('Marked resolved.');});}
+function addBuildingPhotos(bid){const inp=document.createElement('input');inp.type='file';inp.accept='image/*';inp.multiple=true;inp.onchange=()=>{
+  const files=[...inp.files].slice(0,8).filter(f=>f.type.startsWith('image/'));
+  if(!files.length){toast('No image selected');return;}
+  toast('Uploading photo'+(files.length>1?'s':'')+'…');
+  let done=0,okN=0,failN=0;
+  // Only keep a photo — and only claim it was added — once the server confirms
+  // it was saved. A failed/optimistic add must never read as "Photo added".
+  files.forEach(f=>shrink(f,u=>{
+    comPush('photos',{id:'ph'+now().toString(36)+Math.floor(Math.random()*1e4).toString(36),b:bid,photo:u,by:(S.handle||'')}).then(res=>{
+      done++;
+      if(res.ok){okN++;if(!S.bphotos)S.bphotos={};(S.bphotos[bid]=S.bphotos[bid]||[]).push(u);persist();}
+      else{failN++;}
+      if(done>=files.length){render();
+        if(okN&&!failN)toast(okN===1?'Photo added':okN+' photos added');
+        else if(okN&&failN)toast(okN+' added · '+failN+' failed — try again');
+        else toast('Could not upload — please try again');}
+    });
+  }));
+};inp.click();}
 /* Building names are FIXED (seeded from known building names) and cannot be
    renamed by anyone. Only management companies can be named (see nameManager). */
 function wallHTML(bid,locked){return `<div class="wall"><div class="blurred">${locked.slice(0,2).map(revHTML).join('')}</div><div class="cover"><div class="lock">🔒</div><h3><span class="locked-n">${locked.length}</span> more Radiator review${locked.length===1?'':'s'} locked</h3><p>Aggregated public reviews are free. Radiator's own verified reviews unlock when you post one — or grab a pass.</p><div class="btnrow"><button class="btn primary" onclick="go('write','${bid}')">Write a review</button><button class="btn ghost" onclick="openPaywall()">Get access · $9.99</button></div></div></div>`;}
@@ -1630,7 +1769,7 @@ function reviewsSection(b){const bid=b.id;
   else if(filter==='all'){const exShown=list.filter(rv=>(rv.src||'radiator')!=='radiator');const rad=list.filter(rv=>(rv.src||'radiator')==='radiator');body=exShown.map(revHTML).join('')+(rad[0]?revHTML(rad[0]):'');if(rad.length>1)body+=wallHTML(bid,rad.slice(1));}
   else{const pv=list[0];const locked=list.slice(1);body=pv?revHTML(pv):'';if(locked.length)body+=wallHTML(bid,locked);}
   const foot=b.demo?'':(connected?`<div class="small-note" style="margin-top:14px">🟢 <b>Live</b> — Google &amp; Yelp pulled via API${ext.cached?' (cached)':''}. Excerpt counts are capped by each service's API; the combined rating reflects their full review volumes.</div>`:connectPanel());
-  return `<div class="card"><div class="card-h"><span class="t">Reviews from everywhere (${all.length})</span>${combined>0?`<span class="rating-pill">${combined.toFixed(1)} ${starsHTML(combined)}</span>`:''}</div><div class="card-b">
+  return `<div class="card"><div class="card-h"><span class="t">Reviews &amp; ratings${all.length?' ('+all.length+')':''}</span>${combined>0?`<span class="rating-pill">${combined.toFixed(1)} ${starsHTML(combined)}</span>`:''}</div><div class="card-b">
     ${(all.length||connected)?`<div class="small-note" style="margin-bottom:10px">Combined rating from star sources across ${srcN} source${srcN===1?'':'s'} — reviews &amp; Reddit discussions, all in one place.</div>`:''}
     ${summary}${recChips}${chips}
     ${uf!=='all'?`<div class="pctbadge" style="margin:8px 0">🏠 Showing <b style="margin:0 2px">${uf.indexOf('floor:')===0?esc(uf.slice(6)):(uf.slice(5)==='0'?'studio':esc(uf.slice(5))+'-bed')}</b> reviews · <a onclick="setUnitFilter('all')" style="cursor:pointer;text-decoration:underline">show all units</a></div>`:''}
@@ -1644,16 +1783,25 @@ function qaHTML(q){return `<div class="qa"><div class="q"><span class="qi">Q</sp
   <div class="qa-form"><input id="qa-r-${q.id}" placeholder="Answer this…" onkeydown="if(event.key==='Enter')answerQuestion('${q.id}')"><button class="btn ghost sm" onclick="answerQuestion('${q.id}')">Reply</button></div></div>`;
 }
 function askQuestion(bid){const el=$('#qa-new-'+bid);const t=(el.value||'').trim();if(t.length<4){toast('Type a question first');return;}
-  const qo={id:'q'+now().toString(36),b:bid,text:t,author:(S.handle||'You'),date:now(),replies:[]};S.qa.unshift(qo);persist();comPush('qa',{id:qo.id,b:bid,q:t,by:qo.author});render();toast('Question posted');}
+  if(_busy['qa-'+bid])return; _busy['qa-'+bid]=true;
+  const qo={id:'q'+now().toString(36),b:bid,text:t,author:(S.handle||'You'),date:now(),replies:[]};
+  comPush('qa',{id:qo.id,b:bid,q:t,by:qo.author}).then(res=>{_busy['qa-'+bid]=false;
+    if(!res.ok){toast(res.error||'Could not post your question. Try again.');return;}
+    S.qa.unshift(qo);persist();render();toast('Question posted.');});}
 function answerQuestion(qid){const el=$('#qa-r-'+qid);const t=(el.value||'').trim();if(t.length<2){toast('Type an answer first');return;}
   let q=S.qa.find(x=>x.id===qid);if(!q){const dq=DEMO_QA.find(x=>x.id===qid)||COM.qa.find(x=>x.id===qid);if(dq){q={...dq,replies:(dq.replies||[]).slice()};S.qa.unshift(q);}}
-  if(q){q.replies.push({text:t,author:(S.handle||'You'),date:now()});persist();comPush('qa',{id:q.id,b:q.b,q:q.text,a:q.replies.map(r=>r.text).join(' • '),by:q.author});render();toast('Answer posted');}}
-function toggleHelpful(id){S.helpful[id]=!S.helpful[id];if(S.helpful[id])comPush('helpful',{id});else delete S.helpful[id];persist();render();}
+  if(!q)return; if(_busy['ans-'+qid])return; _busy['ans-'+qid]=true;
+  const reply={text:t,author:(S.handle||'You'),date:now()};
+  comPush('qa',{id:q.id,b:q.b,q:q.text,a:q.replies.concat([reply]).map(r=>r.text).join(' • '),by:q.author}).then(res=>{_busy['ans-'+qid]=false;
+    if(!res.ok){toast(res.error||'Could not post your answer. Try again.');return;}
+    q.replies.push(reply);persist();render();toast('Answer posted.');});}
+function toggleHelpful(id){const was=!!S.helpful[id];S.helpful[id]=!was;if(!S.helpful[id])delete S.helpful[id];persist();render();
+  if(!was){comPush('helpful',{id}).then(res=>{if(!res.ok){delete S.helpful[id];persist();render();toast(res.error||'Could not save your vote.');}});}}
 function toggleSave(bid){const i=S.saved.indexOf(bid);if(i>=0){S.saved.splice(i,1);toast('Removed from watchlist');}else{S.saved.push(bid);toast('Added to watchlist');}persist();render();}
 function toggleCompare(bid){const i=S.compare.indexOf(bid);if(i>=0){S.compare.splice(i,1);toast('Removed from compare');}else{if(S.compare.length>=6){toast('Compare up to 6 at once');return;}S.compare.push(bid);toast('Added to compare');}persist();render();}
 
 /* ============ LANDLORD ============ */
-function viewLandlord(bid){const b=bById(bid);if(!b)return '<div class="empty">Not found</div>';const port=portfolioOf(b);
+function viewLandlord(bid){const b=bById(bid);if(!b){nav.view='notfound';nav.id=null;return viewNotFound();}const port=portfolioOf(b);
   const bs=port.buildings.map(x=>{x._r=ratingOf(x.id);x._s=scoreOf(x);return x;}).sort((a,c)=>riskOf(c)-riskOf(a));
   const rs=bs.flatMap(x=>reviewsFor(x.id));const avg=rs.length?rs.reduce((a,r)=>a+r.overall,0)/rs.length:0;
   const totOpen=bs.reduce((a,x)=>a+(x.demo?x.data.viol:x.open),0);const totFixed=bs.reduce((a,x)=>a+(x.demo?0:x.fixed),0);const worst=Math.max(...bs.map(riskOf));
@@ -1664,7 +1812,7 @@ function viewLandlord(bid){const b=bById(bid);if(!b)return '<div class="empty">N
   const catCard=topCats.length?`<div class="card"><div class="card-h"><span class="t">What breaks across their buildings</span></div><div class="card-b"><div class="catbars">${topCats.map(([d,c])=>`<div class="catrow"><span class="cl">${esc(d)}</span><span class="cb"><i style="width:${clampN(c/(topCats[0][1])*100,8,100)}%"></i></span><span class="cv">${c}</span></div>`).join('')}</div><div class="src-note" style="margin-top:10px">Open-violation categories summed across all ${bs.length} buildings in this portfolio.</div></div></div>`:'';
   const webBlock = mgr ? aroundWebCard(mgr,true)
     : (canName?`<div class="card"><div class="card-h"><span class="t">Around the web</span></div><div class="card-b"><p class="small-note" style="margin:0 0 12px">Know who runs these buildings? Name the management company and Radiator will let anyone look them up across Reddit, Google &amp; Yelp — company reputation, not just one address.</p><button class="btn primary" style="width:auto;display:inline-flex" onclick="nameManager('${bid}')">${IC.plus}Name this management company</button></div></div>`:'');
-  return `<div class="acct-hero"><div class="av" style="background:var(--azure)">🏢</div><div><div class="h">${esc(title)}</div><div class="s">${bs.length} building${bs.length===1?'':'s'} in records · <span class="flag ${RISK_CLASS[worst]}" style="display:inline-flex"><span class="dot"></span>${RISK_LABEL[worst]}</span>${mgr&&canName?` · <a onclick="nameManager('${bid}')" style="cursor:pointer">✎ edit name</a>`:''}</div></div></div>
+  return `<div class="acct-hero"><div class="av" style="background:var(--azure)">🏢</div><div><h1 class="h">${esc(title)}</h1><div class="s">${bs.length} building${bs.length===1?'':'s'} in records · <span class="flag ${RISK_CLASS[worst]}" style="display:inline-flex"><span class="dot"></span>${RISK_LABEL[worst]}</span>${mgr&&canName?` · <a onclick="nameManager('${bid}')" style="cursor:pointer">✎ edit name</a>`:''}</div></div></div>
   <div class="statgrid" style="margin-top:16px"><div class="statbox"><div class="n">${avg?avg.toFixed(1):'—'}</div><div class="k">Avg rating</div></div><div class="statbox"><div class="n">${totOpen}</div><div class="k">Open viol.</div></div><div class="statbox"><div class="n">${b.demo?bs.reduce((a,x)=>a+x.data.evict,0):totFixed}</div><div class="k">${b.demo?'Evictions':'Resolved'}</div></div></div>
   ${webBlock}
   ${catCard}
@@ -1685,6 +1833,7 @@ function featCard(b){const sc=scoreOf(b);const g=gradeOf(sc);const sv=(typeof sv
     <div class="bcard-body"><div class="name">${esc(nameOf(b))}</div><div class="addr">${esc(b.hood)}</div></div></button>`;}
 // portfolios = City property groups (shared owner/manager). Ranked, named or not.
 let _portRanked=null;
+/* Rankings use the STORED per-building snapshot (b.open/b.fixed embedded at build time), NOT a live per-page City lookup. Live counts replace the snapshot only after that building page is opened (fetchViol). */
 function portfoliosRanked(){if(_portRanked)return _portRanked;const idx=pgIndex();const rows=[];
   Object.keys(idx).forEach(pg=>{const bs=idx[pg];if(bs.length<2)return; // portfolios = 2+ buildings
     const open=bs.reduce((a,x)=>a+(x.open||0),0);const rs=bs.flatMap(x=>reviewsFor(x.id));const avg=rs.length?rs.reduce((a,r)=>a+r.overall,0)/rs.length:0;
@@ -1695,7 +1844,7 @@ function dirSortLabel(s){return {rating:'Highest rated',lowrating:'Lowest rated'
 function viewDirectory(){
   const isCo=dirTab==='companies';
   const sorts=isCo?['violations','clean','size','rating','lowrating']:['violations','clean','rating','lowrating','reviews'];
-  const sortSel=`<span class="selpill"><select onchange="setDirSort(this.value)">${sorts.map(s=>`<option value="${s}"${dirSort===s?' selected':''}>${dirSortLabel(s)}</option>`).join('')}</select></span>`;
+  const sortSel=`<span class="selpill"><select aria-label="Sort rankings" onchange="setDirSort(this.value)">${sorts.map(s=>`<option value="${s}"${dirSort===s?' selected':''}>${dirSortLabel(s)}</option>`).join('')}</select></span>`;
   const tabBtn=(k,label)=>`<button class="dtab ${dirTab===k?'on':''}" onclick="setDirTab('${k}')" style="padding:9px 16px;border-radius:999px;border:1px solid var(--line);background:${dirTab===k?'var(--ink)':'var(--surface)'};color:${dirTab===k?'#fff':'var(--ink)'};font-weight:700;font-size:13.5px;cursor:pointer">${label}</button>`;
   let list;
   if(isCo){
@@ -1716,7 +1865,7 @@ function viewDirectory(){
     let bs=REAL.map(b=>{b._r=ratingOf(b.id);b._s=scoreOf(b);return b;});
     const cmp={violations:(a,b)=>b.open-a.open,clean:(a,b)=>a.open-b.open||b.fixed-a.fixed,rating:(a,b)=>(b._r.n?b._r.avg:0)-(a._r.n?a._r.avg:0)||b._r.n-a._r.n,lowrating:(a,b)=>(a._r.n?a._r.avg:99)-(b._r.n?b._r.avg:99),reviews:(a,b)=>b._r.n-a._r.n}[dirSort]||((a,b)=>b.open-a.open);
     bs.sort(cmp);bs=bs.slice(0,60);
-    list=`<div class="result-meta"><span class="count">Top 60 of ${REAL.length.toLocaleString()} buildings · ${dirSortLabel(dirSort)}</span></div><div class="bgrid">${bs.map(bcard).join('')}</div>`;
+    list=`<div class="result-meta"><span class="count">Top 60 of ${REAL.length.toLocaleString()} buildings · ${dirSortLabel(dirSort)}</span></div><p class="small-note" style="margin:0 0 12px">Rankings use our stored City of Chicago violation counts (a periodic snapshot). Open any building to pull its live record.</p><div class="bgrid">${bs.map(bcard).join('')}</div>`;
   }
   return `<h1 class="page-t">Rankings</h1><p class="page-sub">Browse Chicago landlords and buildings, ranked. Compare management companies and apartment buildings by violations, cleanliness, and tenant ratings.</p>
   <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">${tabBtn('companies','Management companies')}${tabBtn('buildings','Apartment buildings')}</div>
@@ -1733,7 +1882,9 @@ function viewCompare(){const bs=S.compare.map(bById).filter(Boolean);
     {k:'Risk',f:b=>`<span class="flag ${RISK_CLASS[riskOf(b)]}" style="display:inline-flex"><span class="dot"></span>${RISK_LABEL[riskOf(b)]}</span>`},
     {k:'Open violations',f:b=>`<span class="big">${b.demo?b.data.viol:b.open}</span>`},
     {k:'Resolved (since ’24)',f:b=>b.demo?'—':`<span class="big">${b.fixed}</span>`},
-    {k:'Tenant rating',f:b=>{const r=ratingOf(b.id);return r.n?`<span class="big">${r.avg.toFixed(1)}</span> <small style="color:var(--ink-faint)">(${r.n})</small>`:'<span style="color:var(--ink-faint)">None</span>';}},
+    {k:'Radiator tenant rating',f:b=>{const r=ratingOf(b.id);return r.n?`<span class="big">${r.avg.toFixed(1)}</span> <small style="color:var(--ink-faint)">(${r.n})</small>`:'<span style="color:var(--ink-faint)">No Radiator reviews yet</span>';}},
+    {k:'Google rating',f:b=>{const e=_extCache[b.id];if(!e||e.error){if(!b.demo&&typeof fetchExt==='function')fetchExt(b);return '<span style="color:var(--ink-faint)">—</span>';}const g=(e.breakdown||[]).find(x=>x.source==='google');return (g&&g.rating>0)?`<span class="big">${g.rating.toFixed(1)}</span> <small style="color:var(--ink-faint)">(${g.count})</small>`:'<span style="color:var(--ink-faint)">No reviews found</span>';}},
+    {k:'Yelp rating',f:b=>{const e=_extCache[b.id];if(!e||e.error)return '<span style="color:var(--ink-faint)">—</span>';const y=(e.breakdown||[]).find(x=>x.source==='yelp');return (y&&y.rating>0)?`<span class="big">${y.rating.toFixed(1)}</span> <small style="color:var(--ink-faint)">(${y.count})</small>`:'<span style="color:var(--ink-faint)">No reviews found</span>';}},
     {k:'Neighborhood',f:b=>esc(b.hood)},
     {k:'Top issue',f:b=>b.cats&&b.cats.length?esc(b.cats[0].d):'<span style="color:var(--ink-faint)">—</span>'},
     {k:'Most recent viol.',f:b=>b.demo?'—':fmtDate(b.last)},
@@ -1756,8 +1907,8 @@ function viewNeighborhoods(){const stats=HOOD_STATS.slice().sort((a,b)=>a.hood.l
   </button>`;}).join('')}</div>`;
 }
 function viewNeighborhood(name){const h=HOOD_STATS.find(x=>x.hood===name);const bs=REAL.filter(b=>b.hood===name).map(b=>{b._r=ratingOf(b.id);b._s=scoreOf(b);return b;}).sort((a,b)=>a.open-b.open);
-  if(!h)return '<div class="empty">Neighborhood not found</div>';
-  return `<div class="acct-hero"><div class="av" style="background:var(--azure)">📍</div><div><div class="h">${esc(name)}</div><div class="s">${h.n} tracked building${h.n===1?'':'s'} · ${h.avgOpen} avg open violations</div></div></div>
+  if(!h){nav.view='notfound';nav.id=null;return viewNotFound();}
+  return `<div class="acct-hero"><div class="av" style="background:var(--azure)">📍</div><div><h1 class="h">${esc(name)}</h1><div class="s">${h.n} tracked building${h.n===1?'':'s'} · ${h.avgOpen} avg open violations</div></div></div>
   <div class="statgrid" style="margin-top:16px"><div class="statbox"><div class="n" style="color:var(--good)">${h.good}</div><div class="k">0–2 open</div></div><div class="statbox"><div class="n" style="color:var(--watch)">${h.watch}</div><div class="k">3–9 open</div></div><div class="statbox"><div class="n" style="color:var(--risk)">${h.high}</div><div class="k">10+ open</div></div></div>
   <div class="rlto-note" style="border-color:var(--line-strong);margin-top:14px">These are counts of open City code violations — about building conditions and City enforcement, not the neighborhood's safety or the people who live here. Older buildings and historic disinvestment drive higher counts.</div>
   <div style="margin-top:16px">${neighborhoodWebCard(name)}</div>
@@ -1809,8 +1960,8 @@ let draft=null;
 function viewWrite(bid){const b=bid?bById(bid):null;
   const pick=b?`<div class="field" style="margin:0"><label>Building</label><div class="rev" style="border:none;padding:0"><div class="rhead"><div class="av">${emoOf(hashStr(b.id+b.name))}</div><div class="who"><div class="n">${esc(nameOf(b))}</div><div class="sub">${esc(b.demo?b.addr:b.hood)}</div></div></div></div></div>`
     :`<div class="field" style="margin:0"><label for="w-building">Which building?</label><div class="hint">Search a name or address, or type any Chicago address to add it.</div><input type="text" id="w-building" list="blds" value="${esc(prefillAddr)}" placeholder="Search name or address"><datalist id="blds">${(isDemo()?DEMO:REAL).slice(0,140).map(x=>`<option value="${esc(x.name)}">`).join('')}</datalist></div>`;
-  const dimRows=REVIEW_DIMS.map(d=>`<div class="md"><span class="l">${d.l}</span><div class="star-input" id="si-${d.k}">${[1,2,3,4,5].map(i=>`<button type="button" onclick="setStar('${d.k}',${i})">★</button>`).join('')}</div></div>`).join('');
-  const unitSingles=UNIT_SINGLE.map(u=>`<div class="field" style="margin:0"><label>${u.l}</label><select id="u-${u.k}"><option value="">—</option>${u.opts.map(o=>`<option value="${esc(o)}">${esc(o)}</option>`).join('')}</select></div>`).join('');
+  const dimRows=REVIEW_DIMS.map(d=>`<div class="md"><span class="l" id="lbl-${d.k}">${d.l}</span><div class="star-input" role="group" aria-labelledby="lbl-${d.k}" id="si-${d.k}">${[1,2,3,4,5].map(i=>`<button type="button" aria-label="${i} of 5 stars" onclick="setStar('${d.k}',${i})"><span aria-hidden="true">★</span></button>`).join('')}</div></div>`).join('');
+  const unitSingles=UNIT_SINGLE.map(u=>`<div class="field" style="margin:0"><label for="u-${u.k}">${u.l}</label><select id="u-${u.k}"><option value="">—</option>${u.opts.map(o=>`<option value="${esc(o)}">${esc(o)}</option>`).join('')}</select></div>`).join('');
   const unitMultis=UNIT_MULTI.map(u=>`<div class="field" style="margin:0"><label>${u.l}</label><div class="chiprow" id="um-${u.k}">${u.opts.map(o=>`<button type="button" class="chiptog" onclick="toggleUnitMulti('${u.k}','${esc(o)}',this)">${esc(o)}</button>`).join('')}</div></div>`).join('');
   return `<h1 class="page-t">Review this building</h1><p class="page-sub">The more specific you are, the more you help the next renter. Only the overall rating and a few words are required — everything else is optional. Posting unlocks 30 days of full access.</p>
   <div class="card" style="max-width:720px"><div class="card-b"><form id="wform" onsubmit="return false" style="display:grid;gap:18px">
@@ -1818,13 +1969,11 @@ function viewWrite(bid){const b=bid?bById(bid):null;
     <div class="form-group"><div class="fg-t">🪪 Your residency</div>
       <div class="grid2"><div class="field" style="margin:0"><label for="w-status">You are a…</label><select id="w-status"><option value="current">Current tenant</option><option value="former">Former tenant</option></select></div>
         <div class="field" style="margin:0"><label>Confirm your tenancy <span style="color:var(--ink-faint);font-weight:500">(optional)</span></label><label style="display:flex;gap:8px;align-items:flex-start;font-size:12.5px;color:var(--ink-soft)"><input type="checkbox" id="w-verify" style="width:17px;height:17px;margin-top:1px;accent-color:var(--heat)"><span>I confirm I actually lived or live at this address (shown as <b>self-reported</b>).</span></label></div></div>
-      <div class="field" style="margin:12px 0 0"><label>Get a <b style="color:var(--good)">✓ Verified</b> badge <span style="color:var(--ink-faint);font-weight:500">(optional)</span></label>
-        <label class="uploader" for="w-lease">🪪 Upload a lease to verify tenancy</label>
-        <input type="file" id="w-lease" accept="image/*,application/pdf" hidden onchange="addLease(this.files)">
-        <div id="w-lease-status" class="small-note" style="margin-top:6px">Black out anything you like first — you only need the address and your name. We review it privately, mark you <b>✓ Verified</b>, then <b>delete the file</b>. It's never shown publicly.</div></div>
+      <div class="field" style="margin:12px 0 0"><label>Verified-tenant badge <span style="color:var(--ink-faint);font-weight:500">(coming soon)</span></label>
+        <div class="beta-note">Lease-based verification is not available during the free beta. We're not collecting any lease documents yet.</div></div>
       <div class="grid2" style="margin-top:12px"><div class="field" style="margin:0"><label for="w-in">Lived here since (year)</label><input type="text" id="w-in" placeholder="2023" maxlength="4" inputmode="numeric"></div><div class="field" style="margin:0"><label for="w-out">Until (year, blank if current)</label><input type="text" id="w-out" placeholder="2025" maxlength="7"></div></div>
     </div>
-    <div class="field" style="margin:0"><label>Overall rating <span style="color:var(--risk)">*</span></label><div class="star-input" id="si-overall">${[1,2,3,4,5].map(i=>`<button type="button" onclick="setStar('overall',${i})">★</button>`).join('')}</div></div>
+    <div class="field" style="margin:0"><label>Overall rating <span style="color:var(--risk)">*</span></label><div class="star-input" role="group" aria-label="Overall rating, 1 to 5 stars" id="si-overall">${[1,2,3,4,5].map(i=>`<button type="button" aria-label="${i} of 5 stars" onclick="setStar('overall',${i})"><span aria-hidden="true">★</span></button>`).join('')}</div></div>
     <div class="field" style="margin:0"><label for="w-title">Headline</label><input type="text" id="w-title" placeholder="Sum it up in a line" maxlength="80"></div>
     <div class="field" style="margin:0"><label for="w-body">Your review <span style="color:var(--risk)">*</span></label><div class="hint">Heat, management, repairs, deposit, noise — what should a future tenant know?</div><textarea id="w-body" placeholder="Tell it like it is…"></textarea></div>
     <div class="field" style="margin:0"><label for="w-wish">💡 What do you wish you'd known before signing?</label><div class="hint">Often the single most useful thing for the next renter.</div><textarea id="w-wish" placeholder="The thing nobody tells you until after you've moved in…" style="min-height:80px"></textarea></div>
@@ -1847,7 +1996,8 @@ function viewWrite(bid){const b=bid?bById(bid):null;
         <div class="field" style="margin:0"><label for="w-year">Year built (if you know)</label><input type="number" id="w-year" placeholder="1926" inputmode="numeric"></div></div></div>
     <div class="field" style="margin:0"><label>Photos <span style="color:var(--ink-faint);font-weight:500">(optional)</span></label><label class="uploader" for="w-photos">📷 Add photos — auto-shrunk</label><input type="file" id="w-photos" accept="image/*" multiple hidden onchange="addPhotos(this.files)"><div class="thumbs" id="w-thumbs"></div></div>
     <p class="small-note">Firsthand experience only. Don't name maintenance workers or other tenants. Phone numbers and personal info are removed before publishing.</p>
-    <button class="btn primary full" type="button" onclick="submitReview()">Post review &amp; unlock 30 days</button>
+    <div id="w-error" class="form-error" role="alert" aria-live="assertive" style="display:none"></div>
+    <button id="w-submit" class="btn primary full" type="button" onclick="submitReview()">Post review</button>
   </form></div></div><div style="height:20px"></div>`;
 }
 function initWriteForm(){draft={overall:0,sub:{},photos:[],unit:{pests:[],nearby:[],noiseSrc:[]},would:null,surprise:null,lease:null,leaseType:null};REVIEW_DIMS.forEach(d=>draft.sub[d.k]=0);prefillAddr='';}
@@ -1859,25 +2009,6 @@ function addPhotos(files){const arr=[...files].slice(0,6-draft.photos.length);ar
 function shrink(file,cb){const img=new Image();const url=URL.createObjectURL(file);img.onload=()=>{const max=900;let w=img.width,h=img.height;if(w>h&&w>max){h=h*max/w;w=max;}else if(h>max){w=w*max/h;h=max;}const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);URL.revokeObjectURL(url);try{cb(c.toDataURL('image/jpeg',0.68));}catch(e){toast('Could not add that photo');}};img.onerror=()=>{URL.revokeObjectURL(url);toast('Could not read that image');};img.src=url;}
 function renderThumbs(){const el=$('#w-thumbs');if(el)el.innerHTML=draft.photos.map((p,i)=>`<div class="th"><img src="${p}" alt=""><button type="button" onclick="rmPhoto(${i})">✕</button></div>`).join('');}
 function rmPhoto(i){draft.photos.splice(i,1);renderThumbs();}
-function submitReview(){let bid=$('#w-bid').value;
-  if(!bid){const raw=($('#w-building')?$('#w-building').value:'').trim();if(!raw){toast('Add a building or address');return;}const pool=isDemo()?DEMO:REAL;const m=pool.find(x=>raw.toLowerCase()===x.name.toLowerCase())||pool.find(x=>raw.toLowerCase().includes(x.addr.toLowerCase().slice(0,14)));if(m)bid=m.id;else{bid='u'+now().toString(36);S.userBuildings.push({id:bid,real:true,name:raw,addr:raw,hood:'Chicago',open:0,fixed:0,last:'',lat:null,lng:null,pg:'',cats:[]});}}
-  const overall=draft.overall;if(!overall){toast('Add an overall star rating');return;}
-  const body=($('#w-body').value||'').trim();if(body.length<12){toast('Tell us a bit more in the review');return;}
-  const val=id=>{const e=$('#'+id);return e?e.value:'';};
-  const unit2={};UNIT_SINGLE.forEach(u=>{const v=val('u-'+u.k);if(v)unit2[u.k]=v;});['pests','nearby','noiseSrc'].forEach(k=>{if(draft.unit[k]&&draft.unit[k].length)unit2[k]=draft.unit[k].filter(x=>x!=='None').length?draft.unit[k].slice():draft.unit[k].slice();});
-  const pt=val('w-parktype');if(pt)unit2.parkingType=pt;
-  const bedsRaw=val('w-beds');const beds=bedsRaw===''?null:parseInt(bedsRaw);
-  const rv={id:'u'+now().toString(36)+Math.floor(Math.random()*1e4).toString(36),b:bid,overall,sub:Object.assign({},draft.sub),
-    title:($('#w-title').value||'').trim(),body,wish:($('#w-wish').value||'').trim(),
-    rent:parseInt(val('w-rent'))||0,beds,renewalPct:parseInt(val('w-renewal'))||0,moveInFee:parseInt(val('w-movein'))||0,parking:parseInt(val('w-parking'))||0,petFee:parseInt(val('w-pet'))||0,
-    yearBuilt:parseInt(val('w-year'))||0,
-    moveIn:($('#w-in').value||'').trim(),moveOut:($('#w-out').value||'').trim(),status:val('w-status')||'current',
-    would:draft.would,surprise:draft.surprise,unit2:Object.keys(unit2).length?unit2:null,
-    selfConfirmed:$('#w-verify').checked,verified:false,verifyPending:!!draft.lease,author:(S.handle?S.handle:'A Chicago renter'),helpful:0,photos:draft.photos.slice(),mine:true,date:now()};
-  S.reviews.unshift(rv);const wasLocked=!hasAccess();S.unlockedUntil=Math.max(S.unlockedUntil,now()+30*DAY);persist();comPush('reviews',rv);
-  if(draft.lease){comPush('verify',{rid:rv.id,b:bid,proof:draft.lease,ptype:draft.leaseType||'img',status:rv.status,by:rv.author});}
-  toast(draft.lease?'Review posted — verification pending 🪪':(wasLocked?'Review posted — 30 days unlocked! 🎉':'Review posted — thank you!'));nav.prev=[{view:'explore',id:null}];go('building',bid);}
-
 function addLease(files){const f=files&&files[0];if(!f)return;
   if(f.type==='application/pdf'){const rd=new FileReader();rd.onload=()=>{if((rd.result||'').length>2000000){toast('That PDF is large — a clear photo of the lease works best');return;}draft.lease=rd.result;draft.leaseType='pdf';leaseStatus(f.name);};rd.onerror=()=>toast('Could not read that file');rd.readAsDataURL(f);}
   else if(f.type.startsWith('image/')){shrink(f,u=>{draft.lease=u;draft.leaseType='img';leaseStatus(f.name);});}
@@ -1887,9 +2018,9 @@ function clearLease(){draft.lease=null;draft.leaseType=null;const i=$('#w-lease'
 
 /* ============ MODERATOR — verify tenancy (private, key-gated) ============ */
 let _modKey=null,_modQueue=null,_modLoading=false,_modErr=null;
-function modKey(){if(_modKey==null){try{_modKey=localStorage.getItem('radiator.adminKey')||'';}catch(e){_modKey='';}}return _modKey;}
-function setModKey(){const v=($('#mod-key')?$('#mod-key').value:'').trim();if(!v){toast('Paste your moderator key');return;}_modKey=v;try{localStorage.setItem('radiator.adminKey',v);}catch(e){}_modQueue=null;_modErr=null;modLoad();}
-function modForget(){_modKey='';try{localStorage.removeItem('radiator.adminKey');}catch(e){}_modQueue=null;_modErr=null;render();}
+function modKey(){if(_modKey==null)_modKey='';return _modKey;}
+function setModKey(){const v=($('#mod-key')?$('#mod-key').value:'').trim();if(!v){toast('Paste your moderator key');return;}_modKey=v;_modQueue=null;_modErr=null;modLoad();}
+function modForget(){_modKey='';_modQueue=null;_modErr=null;render();}
 function modLoad(){if(comBase()===null){_modLoading=false;_modErr='Moderation runs on the live site (getradiator.com) only.';render();return;}
   _modLoading=true;_modErr=null;render();
   const base=comBase().replace(/\/+$/,'');
@@ -1946,9 +2077,15 @@ function submitReview(){let bid=$('#w-bid').value;
     moveIn:($('#w-in').value||'').trim(),moveOut:($('#w-out').value||'').trim(),status:val('w-status')||'current',
     would:draft.would,surprise:draft.surprise,unit2:Object.keys(unit2).length?unit2:null,
     selfConfirmed:$('#w-verify').checked,verified:false,verifyPending:!!draft.lease,author:(S.handle?S.handle:'A Chicago renter'),helpful:0,photos:draft.photos.slice(),mine:true,date:now()};
-  S.reviews.unshift(rv);const wasLocked=!hasAccess();S.unlockedUntil=Math.max(S.unlockedUntil,now()+30*DAY);persist();comPush('reviews',rv);
-  if(draft.lease){comPush('verify',{rid:rv.id,b:bid,proof:draft.lease,ptype:draft.leaseType||'img',status:rv.status,by:rv.author});}
-  toast(draft.lease?'Review posted — verification pending 🪪':(wasLocked?'Review posted — 30 days unlocked! 🎉':'Review posted — thank you!'));nav.prev=[{view:'explore',id:null}];go('building',bid);}
+  if(!beginSubmit('review','w-submit','w-error','Posting…'))return;
+  submitReviewAsync(rv,bid);}
+async function submitReviewAsync(rv,bid){
+  const res=await comPush('reviews',rv);
+  if(!res.ok){endSubmit('review',false,'w-submit','w-error',(res.error||'Could not post your review.')+' Nothing was lost — press Post to try again.');return;}
+  // Only persist locally AFTER the server confirms it stored the review.
+  S.reviews.unshift(rv);persist();
+  endSubmit('review',true,'w-submit','w-error');
+  toast('Review posted — thank you.');nav.prev=[{view:'explore',id:null}];go('building',bid);}
 
 /* ============ REPORT ISSUE ============ */
 let issueDraft=null;
@@ -1963,7 +2100,8 @@ function viewIssue(bid){const b=bid?bById(bid):null;
     <div class="field" style="margin:0"><label for="i-date">When did you first report it to the landlord?</label><div class="hint">This is the date the day-counter starts from.</div><input type="date" id="i-date" value="${todayISO()}" max="${todayISO()}"></div>
     <div class="field" style="margin:0"><label for="i-desc">Details</label><textarea id="i-desc" placeholder="What's broken, and what has (or hasn't) happened since you reported it?"></textarea></div>
     <div class="field" style="margin:0"><label>Photos <span style="color:var(--ink-faint);font-weight:500">(optional but powerful)</span></label><label class="uploader" for="i-photos">📷 Add photos of the problem</label><input type="file" id="i-photos" accept="image/*" multiple hidden onchange="addIssuePhotos(this.files)"><div class="thumbs" id="i-thumbs"></div></div>
-    <button class="btn primary full" type="button" onclick="submitIssue()">Post issue &amp; start the clock 🔥</button>
+    <div id="i-error" class="form-error" role="alert" aria-live="assertive" style="display:none"></div>
+    <button id="i-submit" class="btn primary full" type="button" onclick="submitIssue()">Post issue &amp; start the clock</button>
     <p class="small-note" style="text-align:center">Log only real problems in a unit or building you know. Reports show publicly with the days-open count.</p>
   </form></div></div><div style="height:20px"></div>`;
 }
@@ -1978,7 +2116,11 @@ function submitIssue(){let bid=$('#i-bid').value;
   const title=($('#i-title').value||'').trim();if(title.length<4){toast('Add a short summary');return;}
   const date=($('#i-date').value||todayISO());
   const iss={id:'i'+now().toString(36)+Math.floor(Math.random()*1e4).toString(36),b:bid,cat,title,desc:($('#i-desc').value||'').trim(),date,status:'open',by:(S.handle||'You'),mine:true,photos:issueDraft.photos.slice()};
-  if(!S.issues)S.issues=[];S.issues.unshift(iss);persist();comPush('issues',iss);toast('Issue logged — the clock is running. 🔥');nav.prev=[{view:'explore',id:null}];go('building',bid);}
+  if(!beginSubmit('issue','i-submit','i-error','Posting…'))return;
+  comPush('issues',iss).then(res=>{
+    if(!res.ok){endSubmit('issue',false,'i-submit','i-error',(res.error||'Could not log the issue.')+' Nothing was lost — press Post to try again.');return;}
+    if(!S.issues)S.issues=[];S.issues.unshift(iss);persist();endSubmit('issue',true,'i-submit','i-error');
+    toast('Issue logged — the clock is running.');nav.prev=[{view:'explore',id:null}];go('building',bid);});}
 
 /* ============ SAVED ============ */
 function viewSaved(){const bs=S.saved.map(bById).filter(Boolean).map(b=>{b._r=ratingOf(b.id);b._s=scoreOf(b);return b;});
@@ -1993,7 +2135,7 @@ function toggleAlerts(){S.alertsOn=!S.alertsOn;persist();render();toast(S.alerts
 function viewProfile(){const access=hasAccess();const days=accessDaysLeft();const my=S.reviews.length;const plan=S.plan==='renter'?'Renter subscription':access?'Full access':'Free';
   return `<h1 class="page-t">Profile</h1>
   <div class="acct-hero"><div class="av">${initialOf(S.handle||'You')}</div><div><div class="h">${esc(S.handle||'Set your handle')}</div><div class="s">${plan} · <span class="modeflag ${isDemo()?'demo':'live'}">${isDemo()?'Showcase':'Live data'}</span></div></div><button class="btn outline sm" style="margin-left:auto;width:auto;display:inline-flex" onclick="editHandle()">Edit handle</button></div>
-  <div class="access-card ${access?'':'locked'}"><span class="glyph">${access?'🔓':'🔒'}</span><div class="st">${access?'Full access active':'Limited access'}</div><div class="big">${access?(days>60?'Subscribed':days+' day'+(days===1?'':'s')+' left'):'Reviews are locked'}</div><div class="sm">${access?'You can read every review across Chicago.':'Post a review to unlock 30 days free, or get a pass.'}</div>${access?'':`<div style="margin-top:14px"><button class="btn" style="background:#fff;color:var(--heat-deep);width:auto;display:inline-flex" onclick="openPaywall()">Get access</button></div>`}</div>
+  <div class="access-card"><span class="glyph">✓</span><div class="st">Free beta</div><div class="big">Full access</div><div class="sm">Every review across Chicago is free during the beta. Paid plans are coming later.</div></div>
   <div class="statgrid"><div class="statbox"><div class="n">${my}</div><div class="k">Reviews</div></div><div class="statbox"><div class="n">${S.saved.length}</div><div class="k">Watchlist</div></div><div class="statbox"><div class="n">${Object.keys(S.helpful).length}</div><div class="k">Helpful votes</div></div></div>
   <div class="section-t">Settings</div>
   <button class="rowlink" onclick="toggleTheme()"><span class="ic">🌓</span><span class="t">Toggle light / dark</span><span class="go">${IC.chev}</span></button>
@@ -2008,13 +2150,13 @@ function toggleTheme(){const root=document.documentElement;const cur=root.getAtt
 function resetData(){if(confirm('Reset all your Radiator data on this device? This cannot be undone.')){const mode=S.mode;S=baseState();S.mode=mode;saveLocal();clearTimeout(syncTimer);syncTimer=setTimeout(pushSync,800);toast('Your data was reset');tab('explore');}}
 
 /* ============ PAYWALL ============ */
-function openPaywall(){const root=$('#modal-root');root.innerHTML=`<div class="modal-bg" id="mbg" onclick="if(event.target.id==='mbg')closeModal()"><div class="modal"><h3>Unlock every review</h3><p>Radiator runs on a give-to-get model. The best deal is free: post a review. Or buy access.</p>
+function openPaywall(){if(BETA){toast('Radiator is a free beta — every review is already unlocked. Paid plans are coming soon.');return;}const root=$('#modal-root');root.innerHTML=`<div class="modal-bg" id="mbg" onclick="if(event.target.id==='mbg')closeModal()"><div class="modal"><h3>Unlock every review</h3><p>Radiator runs on a give-to-get model. The best deal is free: post a review. Or buy access.</p>
     <div class="plan pick" data-p="pass" onclick="pickPlan('pass')"><div><div class="pn">Day pass</div><div class="pd">24 hours, all reviews</div></div><div class="price">$9.99</div></div>
     <div class="plan" data-p="quarter" onclick="pickPlan('quarter')"><div><div class="pn">3-month access</div><div class="pd">Best for apartment hunting</div></div><div class="price">$19.99</div></div>
     <div class="plan" data-p="renter" onclick="pickPlan('renter')"><div><div class="pn">Renter — yearly</div><div class="pd">Unlimited access + watchlist</div></div><div class="price">$79</div></div>
     <button class="btn primary full" id="buybtn" onclick="buy()">Continue</button><div class="or">or</div><button class="btn ghost full" onclick="closeModal();go('write', nav.view==='building'?nav.id:null)">Write a review — free</button><div class="demo">${PAYMENTS_ON?'🔒 Secure checkout by Stripe':'Demo checkout · no real payment is taken'}</div></div></div>`;
   requestAnimationFrame(()=>$('#mbg').classList.add('show'));openPaywall._pick='pass';}
-function pickPlan(p){openPaywall._pick=p;document.querySelectorAll('.modal .plan').forEach(el=>el.classList.toggle('pick',el.dataset.p===p));}
+function pickPlan(p){if(BETA){toast('Radiator is a free beta — paid plans are coming soon.');return;}openPaywall._pick=p;document.querySelectorAll('.modal .plan').forEach(el=>el.classList.toggle('pick',el.dataset.p===p));}
 let PAYMENTS_ON=false;
 function demoUnlock(p){if(p==='pass'){S.unlockedUntil=Math.max(S.unlockedUntil,now()+DAY);S.plan='free';}else if(p==='quarter'){S.unlockedUntil=Math.max(S.unlockedUntil,now()+90*DAY);S.plan='free';}else{S.unlockedUntil=now()+365*DAY;S.plan='renter';}persist();closeModal();toast('Access unlocked (demo)');render();}
 async function buy(){const p=openPaywall._pick||'pass';

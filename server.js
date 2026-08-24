@@ -31,12 +31,16 @@ app.use(express.json({ limit: '12mb' })); // room for base64 photos
 const PORT = process.env.PORT || 8787;
 const TTL_MS = (Number(process.env.CACHE_HOURS) || 12) * 3600 * 1000;
 
-// --- CORS (so the Radiator frontend on your domain can call this) ---
-const ALLOW = process.env.CORS_ORIGIN || '*';
+// --- CORS: the app is same-origin (page + API share a host), so no CORS header
+//     is needed by default. Advertise it ONLY when an origin is explicitly
+//     configured — an UNSET CORS_ORIGIN means same-origin, never '*'. ---
+const ALLOW = process.env.CORS_ORIGIN || '';
 app.use((req, res, next) => {
-  res.set('Access-Control-Allow-Origin', ALLOW);
-  res.set('Access-Control-Allow-Headers', 'Content-Type');
-  res.set('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  if (ALLOW) {
+    res.set('Access-Control-Allow-Origin', ALLOW);
+    res.set('Access-Control-Allow-Headers', 'Content-Type');
+    res.set('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  }
   if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
 });
@@ -54,8 +58,14 @@ function cacheSet(k, v) {
 }
 
 app.get('/api/health', (_req, res) => {
-  res.json({
-    ok: true,
+  // Release-data health: if SEO data is missing/malformed, entity SEO and 404s
+  // are NOT active, so report unhealthy (503) rather than a green {ok:true}.
+  const seoState = (typeof seo.status === 'function') ? seo.status() : { ok: true, buildings: 0, error: null };
+  res.status(seoState.ok ? 200 : 503).json({
+    ok: seoState.ok,
+    seo: seoState.ok ? 'enabled' : 'unavailable',
+    seoBuildings: seoState.buildings,
+    ...(seoState.error ? { seoError: seoState.error } : {}),
     mock: process.env.MOCK === '1',
     google: !!process.env.GOOGLE_PLACES_KEY || process.env.MOCK === '1',
     yelp: !!process.env.YELP_API_KEY || process.env.MOCK === '1',
@@ -106,7 +116,6 @@ app.get('/api/building', async (req, res) => {
 
     const result = combine(address, sources);
     result.photos = external.photos || [];
-    result.website = (external.google && external.google.website) || null;
     result.cached = !!cached;
     res.json(result);
   } catch (err) {
@@ -121,42 +130,9 @@ app.get('/api/building', async (req, res) => {
 // ============================================================================
 const GKEY = process.env.GOOGLE_PLACES_KEY;
 
-// If the building has an official website, its own hero/social image (og:image)
-// is the best photo we can show — grab it server-side, best effort.
-async function fetchOgImage(site) {
-  try {
-    const ctl = new AbortController();
-    const to = setTimeout(() => ctl.abort(), 6000);
-    const r = await fetch(site, {
-      redirect: 'follow',
-      signal: ctl.signal,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; RadiatorBot/1.0; +https://getradiator.com)',
-        'Accept': 'text/html,application/xhtml+xml',
-      },
-    });
-    clearTimeout(to);
-    if (!r.ok || !/text\/html/i.test(r.headers.get('content-type') || '')) return null;
-    const html = (await r.text()).slice(0, 400000);
-    const m =
-      html.match(/<meta[^>]+(?:property|name)=["'](?:og:image(?::secure_url)?|twitter:image(?::src)?)["'][^>]*content=["']([^"']+)["']/i) ||
-      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]*(?:property|name)=["'](?:og:image(?::secure_url)?|twitter:image(?::src)?)["']/i);
-    if (!m) return null;
-    let u = m[1].trim().replace(/&amp;/g, '&');
-    try { u = new URL(u, r.url || site).href; } catch (e) { return null; }
-    if (!/^https:\/\//i.test(u)) return null;
-    return u;
-  } catch (e) { return null; }
-}
-
 // Build the ordered list of photo URLs for an address (relative /api paths).
 async function buildPhotos(address, google) {
   const out = [];
-  // 0) The property's OFFICIAL website photo, when a website exists — first.
-  if (google && google.website) {
-    const og = await fetchOgImage(google.website);
-    if (og) out.push(og);
-  }
   // 1) Street View of the exact building — real, recognizable, near-universal.
   if (GKEY) {
     try {
@@ -178,45 +154,21 @@ async function buildPhotos(address, google) {
   return out;
 }
 
-// Server-side image cache: building covers now load on EVERY card & page view,
-// so repeat requests must not re-hit Google (cost) or wait on it (speed).
-const IMG_TTL = 7 * 24 * 3600 * 1000; // 7 days, matches the browser cache header
-const IMG_MAX = 400;                  // ~40MB worst case at ~100KB/image
-const imgCache = new Map();
-function imgGet(k) {
-  const e = imgCache.get(k);
-  if (e && Date.now() - e.t < IMG_TTL) { imgCache.delete(k); imgCache.set(k, e); return e; } // LRU bump
-  if (e) imgCache.delete(k);
-  return null;
-}
-function imgSet(k, ct, buf) {
-  if (!buf || buf.length > 2 * 1024 * 1024) return; // don't hoard huge images
-  imgCache.set(k, { t: Date.now(), ct, buf });
-  while (imgCache.size > IMG_MAX) imgCache.delete(imgCache.keys().next().value);
-}
-function sendImg(res, ct, buf) {
-  res.set('Content-Type', ct || 'image/jpeg');
-  res.set('Cache-Control', 'public, max-age=604800'); // 7 days
-  res.end(buf);
-}
-
 // Proxy a single Google Place photo by reference. Streams the image; the key
 // is applied here, server-side, and never reaches the client.
 app.get('/api/photo', async (req, res) => {
   const ref = (req.query.ref || '').toString();
   if (!GKEY || !ref) return res.status(404).end();
-  const hit = imgGet('p:' + ref);
-  if (hit) return sendImg(res, hit.ct, hit.buf);
   try {
     const url =
       'https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=' +
       encodeURIComponent(ref) + '&key=' + GKEY;
     const r = await fetch(url); // follows the 302 to the actual image
     if (!r.ok) return res.status(502).end();
-    const ct = r.headers.get('content-type') || 'image/jpeg';
+    res.set('Content-Type', r.headers.get('content-type') || 'image/jpeg');
+    res.set('Cache-Control', 'public, max-age=604800'); // 7 days
     const buf = Buffer.from(await r.arrayBuffer());
-    imgSet('p:' + ref, ct, buf);
-    sendImg(res, ct, buf);
+    res.end(buf);
   } catch (e) { res.status(502).end(); }
 });
 
@@ -224,29 +176,17 @@ app.get('/api/photo', async (req, res) => {
 app.get('/api/streetview', async (req, res) => {
   const address = (req.query.address || '').toString().trim();
   if (!GKEY || !address) return res.status(404).end();
-  const key = 'sv:' + address.toLowerCase();
-  const hit = imgGet(key);
-  if (hit) return hit.neg ? res.status(404).end() : sendImg(res, hit.ct, hit.buf);
   try {
     const loc = `${address.split(',')[0]}, Chicago, IL`;
-    // Metadata first (free): without this, addresses with no coverage get Google's
-    // gray "no imagery" placeholder instead of a clean 404 the frontend can hide.
-    const meta = await (await fetch(
-      'https://maps.googleapis.com/maps/api/streetview/metadata?location=' +
-      encodeURIComponent(loc) + '&key=' + GKEY)).json();
-    if (!meta || meta.status !== 'OK') {
-      imgCache.set(key, { t: Date.now(), neg: true });
-      return res.status(404).end();
-    }
     const url =
       'https://maps.googleapis.com/maps/api/streetview?size=800x450&location=' +
       encodeURIComponent(loc) + '&fov=80&key=' + GKEY;
     const r = await fetch(url);
     if (!r.ok) return res.status(502).end();
-    const ct = r.headers.get('content-type') || 'image/jpeg';
+    res.set('Content-Type', r.headers.get('content-type') || 'image/jpeg');
+    res.set('Cache-Control', 'public, max-age=604800');
     const buf = Buffer.from(await r.arrayBuffer());
-    imgSet(key, ct, buf);
-    sendImg(res, ct, buf);
+    res.end(buf);
   } catch (e) { res.status(502).end(); }
 });
 
@@ -309,7 +249,9 @@ let APP_BODY = '';
 try {
   const full = fs.readFileSync(path.join(PUBLIC, 'index.html'), 'utf8');
   const m = full.match(/<body>([\s\S]*)<\/body>/i);
-  APP_BODY = m ? m[1] : full;
+  // The app template carries a leading <title> at the top of its body; strip it so
+  // an SEO page (which supplies its own per-page <title> in the head) has exactly one.
+  APP_BODY = (m ? m[1] : full).replace(/^\s*<title>[\s\S]*?<\/title>\s*/i, '');
 } catch (e) { console.error('could not read app body for SEO:', e.message); }
 
 // Crawlable, server-rendered pages for every building / company / neighborhood,
@@ -331,6 +273,12 @@ app.get('*', (req, res, next) => {
 // site going down.
 app.listen(PORT, () => {
   console.log(`Radiator app + API on :${PORT}  (mock=${process.env.MOCK === '1'}, store=${store.HAS_PG ? 'postgres' : 'json-file'})`);
+  // Non-secret beta-safety summary — confirms at a glance that the free-beta gates
+  // are the SERVER's, not a client flag. Never logs any secret VALUE, only on/off.
+  const payments = process.env.STRIPE_SECRET_KEY ? 'ENABLED (Stripe key set)' : 'disabled';
+  const lease = process.env.LEASE_VERIFY === '1' ? 'ENABLED' : 'disabled (POST /api/verify → 503)';
+  const moderation = process.env.ADMIN_KEY ? 'admin-only (ADMIN_KEY set)' : 'disabled (no ADMIN_KEY → 503)';
+  console.log(`  beta gates → payments: ${payments} · lease verification: ${lease} · moderation: ${moderation}`);
 });
 store.init()
   .then(() => console.log('Shared community store ready.'))

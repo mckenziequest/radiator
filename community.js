@@ -35,9 +35,15 @@ function photoList(arr, maxN = 8, maxLen = 900000) {
 
 function mount(app) {
   app.use((req, res, next) => { // JSON body (photos can be big)
-    res.set('Access-Control-Allow-Origin', process.env.CORS_ORIGIN || '*');
-    res.set('Access-Control-Allow-Headers', 'Content-Type');
-    res.set('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+    // The app is same-origin (the page and the API share a host), so cross-origin
+    // headers are NOT needed by default. Only advertise CORS when an origin is
+    // explicitly configured — an UNSET CORS_ORIGIN means same-origin, never '*'.
+    const allow = process.env.CORS_ORIGIN;
+    if (allow) {
+      res.set('Access-Control-Allow-Origin', allow);
+      res.set('Access-Control-Allow-Headers', 'Content-Type');
+      res.set('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+    }
     if (req.method === 'OPTIONS') return res.sendStatus(204);
     next();
   });
@@ -47,6 +53,13 @@ function mount(app) {
     if (rateLimited(ip)) { res.status(429).json({ error: 'Slow down a moment and try again.' }); return true; }
     return false;
   };
+
+  // Lease / tenancy-proof verification is OFF during the free beta. It collects a
+  // sensitive document (a lease image/PDF), so it is disabled SERVER-SIDE — the
+  // client hiding the field is not enough, since /api/verify could otherwise be
+  // POSTed directly. It only turns on with an explicit server env flag; no
+  // client-side flag, query param, or browser state can enable it.
+  const LEASE_VERIFY_ON = process.env.LEASE_VERIFY === '1';
 
   // Pull all shared content (optionally only what changed since ?since=<ms>)
   app.get('/api/community', async (req, res) => {
@@ -150,6 +163,7 @@ function mount(app) {
 
   // Tenant submits a redacted lease to request a ✓ Verified badge on their review.
   app.post('/api/verify', async (req, res) => {
+    if (!LEASE_VERIFY_ON) return res.status(503).json({ error: 'Lease verification is paused during the free beta.' });
     if (guard(req, res)) return;
     const b = req.body || {};
     if (!id(b.rid) || !bid(b.b) || !proofOK(b.proof)) {

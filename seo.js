@@ -12,22 +12,55 @@ const path = require('path');
 
 let DATA = { buildings: [], hoods: [], companies: [], generated: '' };
 let byId = new Map(), byPg = new Map(), byHood = new Map();
+// Named management firms + friendly building names — projected from radiator3.html
+// (the single source of truth) into entity-manifest.json by build_deploy.mjs, so
+// the server renders the same firm pages and building names the client shows.
+let FIRMS = new Map();      // id -> { id, name, kind }
+let NAMES = new Map();      // building address -> friendly name
+
+// Release-data health. When SEO data is missing or malformed the server must
+// NOT pretend entity SEO/404s are active: entity routes fail-closed (503) and
+// /api/health reports unhealthy (see mountDegraded + status()).
+let LOADED = false, LOAD_ERROR = null;
+function status() { return { ok: LOADED, buildings: LOADED ? DATA.buildings.length : 0, error: LOAD_ERROR }; }
 
 function load() {
+  let raw;
   try {
-    DATA = JSON.parse(fs.readFileSync(path.join(__dirname, 'seo-data.json'), 'utf8'));
-  } catch (e) { console.error('seo-data.json missing — SEO pages disabled:', e.message); return false; }
+    raw = JSON.parse(fs.readFileSync(path.join(__dirname, 'seo-data.json'), 'utf8'));
+  } catch (e) {
+    LOAD_ERROR = 'seo-data.json missing or unreadable — run `node build_deploy.mjs build`';
+    console.error('SEO data unavailable — entity routes will 503:', e.message);
+    return false;
+  }
+  // Reject a malformed/empty snapshot — an empty file must not read as healthy.
+  if (!raw || !Array.isArray(raw.buildings) || raw.buildings.length === 0 ||
+      !Array.isArray(raw.hoods) || !Array.isArray(raw.companies)) {
+    LOAD_ERROR = 'seo-data.json is malformed (missing or empty buildings/hoods/companies)';
+    console.error('SEO data malformed — entity routes will 503.');
+    return false;
+  }
+  DATA = raw;
   DATA.buildings.forEach(b => {
     byId.set(b.id, b);
     if (b.pg) { if (!byPg.has(b.pg)) byPg.set(b.pg, []); byPg.get(b.pg).push(b); }
     if (b.hood) { if (!byHood.has(b.hood)) byHood.set(b.hood, []); byHood.get(b.hood).push(b); }
   });
+  try {
+    const man = JSON.parse(fs.readFileSync(path.join(__dirname, 'entity-manifest.json'), 'utf8'));
+    (man.firms || []).forEach(f => FIRMS.set(f.id, f));
+    Object.keys(man.buildingNames || {}).forEach(addr => NAMES.set(addr, man.buildingNames[addr]));
+  } catch (e) { console.error('entity-manifest.json missing — firm pages & name parity disabled:', e.message); }
+  LOADED = true; LOAD_ERROR = null;
   return true;
 }
+// Friendly building name when we have one (parity with the client's nameOf()),
+// otherwise the street address.
+function nameOfBuilding(b) { return NAMES.get(b.addr) || b.addr; }
 
 const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const slug = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
-function scoreOf(b) { let s = 100 - Math.min(74, b.open * 1.5) + Math.min(6, b.fixed * 0.15); return Math.max(3, Math.min(99, Math.round(s))); }
+function scoreOf(b) { let s = 100 - Math.min(85, b.open * 2.5); if (b.open >= 3) s = Math.min(s, 80); return Math.max(3, Math.min(99, Math.round(s))); }
 function gradeOf(s) { return s >= 85 ? 'A' : s >= 70 ? 'B' : s >= 55 ? 'C' : s >= 40 ? 'D' : 'F'; }
 function origin(req) { return (req.headers['x-forwarded-proto'] || 'https') + '://' + (req.headers.host || 'radiator-pkt6.onrender.com'); }
 
@@ -47,28 +80,70 @@ function shell(appBody, o) {
 <meta property="og:url" content="${esc(o.canonical)}">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="${esc(o.title)}">
-<meta name="twitter:description" content="${esc(o.desc)}">
+<meta name="twitter:description" content="${esc(o.desc)}">${o.robots ? `\n<meta name="robots" content="${esc(o.robots)}">` : ''}
 ${ld}
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Crect width=%2224%22 height=%2224%22 rx=%226%22 fill=%22%23F26B3A%22/%3E%3Cg fill=%22%23FFF8F2%22%3E%3Crect x=%226.1%22 y=%226.4%22 width=%222.5%22 height=%2211.2%22 rx=%221.25%22/%3E%3Crect x=%2210.75%22 y=%226.4%22 width=%222.5%22 height=%2211.2%22 rx=%221.25%22 opacity=%22.82%22/%3E%3Crect x=%2215.4%22 y=%226.4%22 width=%222.5%22 height=%2211.2%22 rx=%221.25%22 opacity=%22.6%22/%3E%3C/g%3E%3C/svg%3E">
 <style>#ssr-content{max-width:760px;margin:0 auto;padding:40px 22px;font-family:-apple-system,system-ui,"Public Sans",sans-serif;color:#2A2320;line-height:1.6}#ssr-content h1{font-size:1.7rem;line-height:1.15;margin:0 0 10px}#ssr-content a{color:#C24634}#ssr-content .g{display:inline-block;font-weight:800;border-radius:8px;padding:2px 10px;background:#F3E7DC;margin-right:8px}#ssr-content ul{padding-left:18px}@media(prefers-color-scheme:dark){#ssr-content{color:#F5EDE6}#ssr-content .g{background:#332A25}}</style>`;
   return `<!doctype html>\n<html lang="en">\n<head>\n${head}\n</head>\n<body>\n<div id="ssr-content">${o.ssr}</div>\n${appBody}\n</body>\n</html>`;
 }
 
+function notFound(appBody, o, pth) {
+  const canonical = o + (pth || '/'); // self-referential, never the homepage
+  const ssr = `<h1>Page not found</h1>\n<p>We couldn't find that page on Radiator. The building, company, or link may have moved or never existed.</p>\n<p><a href="${o}/">Go to Radiator</a> · <a href="${o}/explore">Search Chicago buildings</a></p>`;
+  // noindex so a bad URL is never indexed as a real page; jsonld null so no
+  // entity structured data appears on a not-found response.
+  return shell(appBody, { title: 'Page not found | Radiator', desc: 'That page could not be found on Radiator.', canonical, ssr, jsonld: null, robots: 'noindex, nofollow' });
+}
+// Non-entity SPA routes that always serve the app shell. Entity segments
+// (building, firm, company, landlord, neighborhood) are intentionally NOT here:
+// each has an explicit :id handler above that 200s a valid entity and 404s an
+// invalid/missing one, so a bare or unknown entity path falls through to the
+// catch-all and gets a real 404 instead of a soft 200 shell.
+const KNOWN_ROUTES = new Set(['', 'explore', 'map', 'compare', 'neighborhoods', 'tools', 'pricing', 'saved', 'guide', 'profile', 'write', 'issue', 'terms', 'privacy', 'guidelines', 'directory', 'about', 'help']);
+// Dynamic entity segments — these must never silently serve a 200 app shell.
+const ENTITY_SEGS = new Set(['building', 'firm', 'company', 'landlord', 'neighborhood']);
+
+// Fail-closed: when release SEO data is unavailable, entity routes return a
+// real 503 (noindex, no fake entity metadata) instead of a soft 200 shell, and
+// /api/health reports unhealthy. Static app routes still work.
+function mountDegraded(app, getAppBody) {
+  console.error('SEO pages DISABLED (data unavailable): ' + (LOAD_ERROR || 'unknown') + ' — entity routes return 503; /api/health is unhealthy.');
+  const unavailable = (req, res) => {
+    const o = origin(req);
+    const ssr = `<h1>Temporarily unavailable</h1>\n<p>Building, company and neighborhood pages are briefly unavailable while records finish loading. Please try again shortly.</p>\n<p><a href="${o}/">Go to Radiator</a></p>`;
+    res.status(503).set('Retry-After', '120').send(shell(getAppBody(), {
+      title: 'Temporarily unavailable | Radiator', desc: 'This page is briefly unavailable.',
+      canonical: o + (req.path || '/'), ssr, jsonld: null, robots: 'noindex, nofollow',
+    }));
+  };
+  app.get(['/building/:id', '/building/:id/:slug', '/firm/:id', '/company/:pg', '/company/:pg/:slug',
+    '/neighborhood/:slug', '/landlord/:pg', '/landlord/:pg/:slug'], unavailable);
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api/')) return next();
+    const seg = (req.path.split('/').filter(Boolean)[0] || '');
+    if (ENTITY_SEGS.has(seg)) return unavailable(req, res);      // entity path → 503, never a 200 shell
+    if (KNOWN_ROUTES.has(seg)) return next();                    // home/explore/etc. → static app shell
+    return res.status(404).send(notFound(getAppBody(), origin(req), req.path)); // unknown top-level → real 404
+  });
+}
+
 function mount(app, getAppBody) {
   const ok = load();
-  if (!ok) return;
+  if (!ok) { mountDegraded(app, getAppBody); return; }
 
   // ---- building page ----
   app.get(['/building/:id', '/building/:id/:slug'], (req, res, next) => {
     const b = byId.get(req.params.id);
-    if (!b) return next();
+    if (!b) return res.status(404).send(notFound(getAppBody(), origin(req), req.path));
     const o = origin(req);
     const canonical = o + '/building/' + b.id + '/' + slug(b.addr);
     const sc = scoreOf(b), g = gradeOf(sc);
+    const name = nameOfBuilding(b); // friendly name when seeded, else the address (matches the client)
+    const named = name !== b.addr;
     const siblings = (byHood.get(b.hood) || []).filter(x => x.id !== b.id).slice(0, 8);
-    const title = `${b.addr}, ${b.hood} — reviews & city records | Radiator`;
+    const title = `${name}, ${b.hood} — reviews & city records | Radiator`;
     const desc = `${b.addr} in ${b.hood}, Chicago: Radiator Score ${sc}/100 (${g}). ${b.open} open building violations, ${b.fixed} resolved on file with the City of Chicago. See tenant reviews, rent history, transit and maintenance issues before you sign.`;
-    const ssr = `<h1>${esc(b.addr)}, ${esc(b.hood)}</h1>
+    const ssr = `<h1>${esc(name)}</h1>${named ? `\n<p>${esc(b.addr)}, ${esc(b.hood)}</p>` : ''}
 <p><span class="g">${g}</span> Radiator Score <strong>${sc}/100</strong> — built from real City of Chicago records${b.open ? ' and tenant reviews' : ''}.</p>
 <p>This ${esc(b.hood)} building has <strong>${b.open} open building violation${b.open === 1 ? '' : 's'}</strong> and <strong>${b.fixed} resolved</strong> on file with the City of Chicago. On Radiator you can read verified tenant reviews, rent &amp; fee history, transit and parking, and any open maintenance issues for ${esc(b.addr)} — and see what renters say about it across Reddit, Google and Yelp — before you sign a lease.</p>
 <p><a href="${o}/">Open ${esc(b.addr)} on Radiator →</a></p>
@@ -77,7 +152,7 @@ ${b.pg ? `<p>Managed as part of <a href="${o}/company/${esc(b.pg)}">Chicago prop
 <ul>${siblings.map(x => `<li><a href="${o}/building/${x.id}/${slug(x.addr)}">${esc(x.addr)}</a> — ${x.open} open violation${x.open === 1 ? '' : 's'}</li>`).join('')}</ul>
 <p><a href="${o}/">Radiator — check any Chicago building before you sign</a></p>`;
     const jsonld = {
-      '@context': 'https://schema.org', '@type': 'ApartmentComplex', name: b.addr,
+      '@context': 'https://schema.org', '@type': 'ApartmentComplex', name: name,
       address: { '@type': 'PostalAddress', streetAddress: b.addr, addressLocality: 'Chicago', addressRegion: 'IL', addressCountry: 'US' },
       url: canonical, areaServed: b.hood,
     };
@@ -88,7 +163,7 @@ ${b.pg ? `<p>Managed as part of <a href="${o}/company/${esc(b.pg)}">Chicago prop
   // ---- management-company / property-group page ----
   app.get(['/company/:pg', '/company/:pg/:slug'], (req, res, next) => {
     const bs = byPg.get(req.params.pg);
-    if (!bs || !bs.length) return next();
+    if (!bs || !bs.length) return res.status(404).send(notFound(getAppBody(), origin(req), req.path));
     const o = origin(req);
     const canonical = o + '/company/' + req.params.pg;
     const totOpen = bs.reduce((a, x) => a + x.open, 0);
@@ -106,10 +181,36 @@ ${b.pg ? `<p>Managed as part of <a href="${o}/company/${esc(b.pg)}">Chicago prop
     res.send(shell(getAppBody(), { title, desc, canonical, jsonld, ssr }));
   });
 
+  // ---- /landlord/:pg — obsolete alias. The canonical landlord URL is
+  //      /company/:pg (every internal link uses that), so redirect a valid pg
+  //      there deliberately; an unknown pg is a real 404. ----
+  app.get(['/landlord/:pg', '/landlord/:pg/:slug'], (req, res) => {
+    const bs = byPg.get(req.params.pg);
+    if (!bs || !bs.length) return res.status(404).send(notFound(getAppBody(), origin(req), req.path));
+    res.redirect(301, '/company/' + req.params.pg);
+  });
+
+  // ---- named management-firm page (SEED_COMPANIES via the manifest) ----
+  app.get('/firm/:id', (req, res) => {
+    const f = FIRMS.get(req.params.id);
+    if (!f) return res.status(404).send(notFound(getAppBody(), origin(req), req.path));
+    const o = origin(req);
+    const canonical = o + '/firm/' + f.id;
+    const title = `${f.name} — Chicago property management reviews | Radiator`;
+    const desc = `What Chicago renters and the web say about ${f.name} — ${f.kind}. Reputation links, reviews, and tenant-tagged buildings on Radiator.`;
+    const ssr = `<h1>${esc(f.name)}</h1>
+<p>${esc(f.kind)} in Chicago. See what renters and the web say about ${esc(f.name)} — reviews across Google, Yelp and Reddit, and buildings tenants have tagged to this company — before you rent from them.</p>
+<p><a href="${o}/">Open ${esc(f.name)} on Radiator →</a></p>
+<p><a href="${o}/directory">Browse all Chicago management companies</a></p>`;
+    const jsonld = { '@context': 'https://schema.org', '@type': 'Organization', name: f.name, url: canonical, areaServed: 'Chicago, IL' };
+    res.set('Cache-Control', 'public, max-age=600');
+    res.send(shell(getAppBody(), { title, desc, canonical, jsonld, ssr }));
+  });
+
   // ---- neighborhood page ----
   app.get('/neighborhood/:slug', (req, res, next) => {
     const hood = DATA.hoods.find(h => slug(h) === req.params.slug);
-    if (!hood) return next();
+    if (!hood) return res.status(404).send(notFound(getAppBody(), origin(req), req.path));
     const o = origin(req);
     const canonical = o + '/neighborhood/' + slug(hood);
     const bs = (byHood.get(hood) || []);
@@ -138,6 +239,7 @@ ${b.pg ? `<p>Managed as part of <a href="${o}/company/${esc(b.pg)}">Chicago prop
       add(o + '/', '1.0');
       ['/explore', '/pricing', '/neighborhoods', '/map', '/tools'].forEach(p => add(o + p, '0.7'));
       DATA.hoods.forEach(h => add(o + '/neighborhood/' + slug(h), '0.6'));
+      FIRMS.forEach(f => add(o + '/firm/' + f.id, '0.6'));
       DATA.companies.forEach(c => add(o + '/company/' + c.pg, '0.5'));
       DATA.buildings.forEach(b => add(o + '/building/' + b.id + '/' + slug(b.addr), '0.5'));
       sitemapCache = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('\n')}\n</urlset>`;
@@ -146,7 +248,16 @@ ${b.pg ? `<p>Managed as part of <a href="${o}/company/${esc(b.pg)}">Chicago prop
     res.type('application/xml').send(sitemapCache);
   });
 
+  // Unknown top-level routes get a real 404 + not-found head so crawlers and the
+  // client agree, instead of silently serving the homepage.
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api/')) return next();
+    const seg = (req.path.split('/').filter(Boolean)[0] || '');
+    if (KNOWN_ROUTES.has(seg)) return next(); // valid app route -> SPA (static/index)
+    res.status(404).send(notFound(getAppBody(), origin(req), req.path));
+  });
+
   console.log(`SEO pages live: ${DATA.buildings.length} buildings, ${DATA.companies.length} companies, ${DATA.hoods.length} neighborhoods + sitemap.`);
 }
 
-module.exports = { mount };
+module.exports = { mount, status };
