@@ -141,6 +141,16 @@ function mount(app) {
     catch (e) { res.status(500).json({ error: 'failed' }); }
   });
 
+  // Email signup (launch alerts / lead capture)
+  app.post('/api/signup', async (req, res) => {
+    if (guard(req, res)) return;
+    const b = req.body || {};
+    const email = String(b.email || '').trim();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return res.status(400).json({ error: 'A valid email is required.' });
+    try { await store.addSignup(email, b.ctx, b.b); res.json({ ok: true }); }
+    catch (e) { console.error(e); res.status(500).json({ error: 'save failed' }); }
+  });
+
   // Report content for moderation
   app.post('/api/reports', async (req, res) => {
     if (guard(req, res)) return;

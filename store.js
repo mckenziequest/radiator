@@ -75,7 +75,32 @@ async function init() {
       reason TEXT,
       ts     BIGINT
     );
+    CREATE TABLE IF NOT EXISTS signups (
+      email    TEXT PRIMARY KEY,
+      ctx      TEXT,
+      building TEXT,
+      ts       BIGINT
+    );
   `);
+}
+
+// Email capture (launch alerts / lead gen). Keyed by email so re-signup is idempotent.
+async function addSignup(email, ctx, building) {
+  const e = String(email || '').toLowerCase().slice(0, 200);
+  const ts = Date.now();
+  if (HAS_PG) {
+    await pg.query(
+      `INSERT INTO signups (email, ctx, building, ts) VALUES ($1,$2,$3,$4)
+       ON CONFLICT (email) DO UPDATE SET ctx = EXCLUDED.ctx, building = EXCLUDED.building`,
+      [e, String(ctx || '').slice(0, 40), building ? String(building).slice(0, 40) : null, ts]);
+  } else {
+    const m = loadFile(); m.signups = m.signups || {}; m.signups[e] = { email: e, ctx, building, ts }; saveFile();
+  }
+  return { email: e };
+}
+async function signupCount() {
+  if (HAS_PG) { const r = await pg.query(`SELECT COUNT(*)::int c FROM signups`); return r.rows[0].c; }
+  return Object.keys(loadFile().signups || {}).length;
 }
 
 // ---------- writes ----------
@@ -171,4 +196,4 @@ async function stats() {
   return o;
 }
 
-module.exports = { init, putItem, setName, incHelpful, addReport, getAll, stats, HAS_PG };
+module.exports = { init, putItem, setName, incHelpful, addReport, addSignup, signupCount, getAll, stats, HAS_PG };

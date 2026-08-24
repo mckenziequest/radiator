@@ -14,6 +14,7 @@
 
 const express = require('express');
 const path = require('path');
+const fs = require('fs');
 const compression = require('compression');
 const { getGoogle } = require('./providers/google');
 const { getYelp } = require('./providers/yelp');
@@ -21,6 +22,7 @@ const { getReddit } = require('./providers/reddit');
 const { combine } = require('./aggregate');
 const store = require('./store');
 const community = require('./community');
+const seo = require('./seo');
 
 const app = express();
 app.use(compression()); // gzip every response — cuts the ~1MB app page to a fraction over the wire
@@ -107,6 +109,19 @@ community.mount(app);
 
 // ---- serve the Radiator web app itself, so ONE deploy runs everything ----
 const PUBLIC = path.join(__dirname, 'public');
+
+// Extract the app body once so SEO routes can wrap it with a per-page <head>.
+let APP_BODY = '';
+try {
+  const full = fs.readFileSync(path.join(PUBLIC, 'index.html'), 'utf8');
+  const m = full.match(/<body>([\s\S]*)<\/body>/i);
+  APP_BODY = m ? m[1] : full;
+} catch (e) { console.error('could not read app body for SEO:', e.message); }
+
+// Crawlable, server-rendered pages for every building / company / neighborhood,
+// + sitemap.xml + robots.txt. Mounted BEFORE static so these win over index.html.
+seo.mount(app, () => APP_BODY);
+
 // No long-lived HTML cache: the app is one file that gets redeployed, so browsers
 // must revalidate (cheap 304s via etag) and pick up new versions immediately.
 app.use(express.static(PUBLIC, { maxAge: 0, etag: true, extensions: ['html'] }));
