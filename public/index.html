@@ -477,7 +477,7 @@ table.cmp td.big{font-weight:800; font-variant-numeric:tabular-nums; font-family
 .g2g-band .btn{background:var(--brand-grad);color:#fff;white-space:nowrap;border:none}
 .landing-foot{text-align:center;color:var(--ink-faint);font-family:var(--mono);font-size:11px;letter-spacing:.03em;margin:34px 0 10px}
 .landing-foot a{color:var(--heat-deep);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
-.price-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:8px;align-items:stretch}
+.price-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:8px;align-items:stretch}
 @media(max-width:900px){.price-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:560px){.price-grid{grid-template-columns:1fr}}
 .pcard{background:var(--surface);border:1.5px solid var(--line);border-radius:var(--r);padding:22px 20px;display:flex;flex-direction:column;position:relative;box-shadow:var(--shadow-sm)}
@@ -543,7 +543,22 @@ function hashStr(s){let h=0;s=String(s);for(let i=0;i<s.length;i++)h=(h*31+s.cha
 
 let REAL=[];
 let HOOD_STATS=[];
-function initData(){REAL=CHI.buildings.map((b,i)=>({id:'r'+i,real:true,name:b.addr,addr:b.addr,hood:b.hood,open:+b.open||0,fixed:+b.fixed||0,last:b.last||'',lat:b.lat,lng:b.lng,pg:String(b.pg||''),cats:b.cats||[],transit:b.transit||null}));HOOD_STATS=CHI.hoodStats||[];HOODS=[...new Set(REAL.map(b=>b.hood))].sort();}
+// Pre-seeded names for well-known Chicago buildings so people can search them by name
+// (they're keyed on the exact City-record address). The community can still rename any building.
+const SEED_NAMES={
+ '2340 N CALIFORNIA Ave':'NoCa Blu',
+ '555 W MADISON St':'Presidential Towers',
+ '1130 N DEARBORN St':'Elm Street Plaza',
+ '333 E ONTARIO St':'McClurg Court',
+ '220 E ILLINOIS St':'Optima Signature',
+ '222 N COLUMBUS Dr':'Park Millennium',
+ '175 N HARBOR Dr':'North Harbor Tower',
+ '360 E SOUTH WATER St':'The Tides',
+ '123 S GREEN St':'Catalyst',
+ '451 E GRAND Ave':'One Bennett Park',
+ '350 N CANAL St':'Cassidy on Canal',
+};
+function initData(){REAL=CHI.buildings.map((b,i)=>({id:'r'+i,real:true,name:(SEED_NAMES[b.addr]||b.addr),addr:b.addr,hood:b.hood,open:+b.open||0,fixed:+b.fixed||0,last:b.last||'',lat:b.lat,lng:b.lng,pg:String(b.pg||''),cats:b.cats||[],transit:b.transit||null}));HOOD_STATS=CHI.hoodStats||[];HOODS=[...new Set(REAL.map(b=>b.hood))].sort();}
 
 function sub(m,c,h,no,r,v){return {maintenance:m,clean:c,heat:h,noise:no,response:r,value:v};}
 const DEMO=[
@@ -621,10 +636,13 @@ const UNIT_MULTI=[
 ];
 const RES_STATUS={current:'Current tenant',former:'Former tenant',unverified:'Unverified'};
 function badgeFor(rv){ if(rv.src&&rv.src!=='radiator') return null; // external handled elsewhere
-  const st=rv.status||'unverified'; const ver=!!rv.verified;
-  if(st==='current') return {t:ver?'Verified current tenant':'Current tenant · unverified',cls:ver?'vb-cur':'vb-unv'};
-  if(st==='former') return {t:ver?'Verified former tenant':'Former tenant · unverified',cls:ver?'vb-for':'vb-unv'};
-  return {t:'Unverified',cls:'vb-unv'}; }
+  const st=rv.status||'current'; const ver=!!rv.verified; const self=!!rv.selfConfirmed;
+  const who = st==='former' ? 'former tenant' : 'current tenant';
+  // "Verified" (proof-checked by a moderator) is the only badge that carries a ✓.
+  if(ver) return {t:'✓ Verified '+who, cls: st==='former'?'vb-for':'vb-cur'};
+  if(rv.verifyPending) return {t:'Verification pending', cls:'vb-unv'};
+  if(self) return {t:'Self-reported '+who, cls:'vb-unv'};
+  return {t:'Unverified', cls:'vb-unv'}; }
 function reviewYear(rv){ return parseInt(rv.moveOut)||parseInt(rv.leaseYear)||parseInt(rv.moveIn)||0; }
 function median(a){ if(!a.length)return 0; const s=a.slice().sort((x,y)=>x-y); const m=Math.floor(s.length/2); return s.length%2?s[m]:(s[m-1]+s[m])/2; }
 function modeOf(a){ if(!a.length)return null; const c={}; a.forEach(x=>c[x]=(c[x]||0)+1); return Object.entries(c).sort((x,y)=>y[1]-x[1])[0][0]; }
@@ -692,7 +710,7 @@ async function pullSync(){try{const res=await fetch('data/state.json',{cache:'no
 /* When the app is served from its own host (not the claude.ai artifact), reviews/
    issues/Q&A/names/photos are SHARED across every visitor via the backend API.
    On the artifact (no backend) COM stays empty and everything falls back to local. */
-const COM={reviews:[],issues:[],qa:[],names:{},photos:[],helpful:{},byB:{},_lastTs:0,on:false};
+const COM={reviews:[],issues:[],qa:[],names:{},photos:[],replies:[],helpful:{},byB:{},_lastTs:0,on:false};
 function comBase(){let b=apiBase();if(b)return b.replace(/\/+$/,'');
   if(typeof location!=='undefined'&&location.protocol.indexOf('http')===0&&!/claude|anthropic|usercontent|localhost127/.test(location.hostname))return '';
   return null;}
@@ -705,7 +723,7 @@ async function comPull(){const base=comBase();if(base===null)return;try{
   const revs=(d.reviews||[]).map(r=>Object.assign({},r,{mine:false,date:r.ts,helpful:(d.helpful&&d.helpful[r.id])||r.helpful||0}));
   const iss=(d.issues||[]).map(i=>Object.assign({},i,{mine:false}));
   const qas=(d.qa||[]).map(q=>({id:q.id,b:q.b,text:q.q,author:q.by||'A neighbor',date:q.ts,replies:q.a?[{text:q.a,author:q.by||'A neighbor',date:q.ts}]:[]}));
-  comMergeArr(COM.reviews,revs);comMergeArr(COM.issues,iss);comMergeArr(COM.qa,qas);comMergeArr(COM.photos,(d.photos||[]));
+  comMergeArr(COM.reviews,revs);comMergeArr(COM.issues,iss);comMergeArr(COM.qa,qas);comMergeArr(COM.photos,(d.photos||[]));comMergeArr(COM.replies,(d.replies||[]));
   Object.assign(COM.names,d.names||{});Object.assign(COM.helpful,d.helpful||{});
   if(d.now)COM._lastTs=d.now;comIndex();clearCaches();
   if(typeof render==='function'&&document.getElementById('app'))render();
@@ -717,6 +735,7 @@ function comReviews(bid){return (COM.byB[bid]&&COM.byB[bid].reviews)||[];}
 function comIssues(bid){return (COM.byB[bid]&&COM.byB[bid].issues)||[];}
 function comQA(bid){return (COM.byB[bid]&&COM.byB[bid].qa)||[];}
 function comPhotos(bid){return ((COM.byB[bid]&&COM.byB[bid].photos)||[]).map(p=>p.url);}
+function comReplies(rid){const all=(COM.replies||[]).concat(S.replies||[]);const seen={};return all.filter(x=>x&&x.rid===rid&&!seen[x.id]&&(seen[x.id]=1)).sort((a,b)=>(a.ts||0)-(b.ts||0));}
 function dedupById(primary,extra){const seen={};primary.forEach(x=>seen[x.id]=1);return primary.concat(extra.filter(x=>!seen[x.id]));}
 
 /* derived */
@@ -816,7 +835,7 @@ function openIssuesFor(bid){return issuesFor(bid).filter(i=>i.status!=='resolved
 function daysOpen(d){const t=Date.parse((d||'')+'T00:00:00');if(isNaN(t))return 0;return Math.max(0,Math.floor((now()-t)/DAY));}
 function daysTier(n){return n>=60?2:n>=21?1:0;}
 function nameOf(b){return (b&&S.names&&S.names[b.id])||(b&&COM.names&&COM.names[b.id])||(b&&b.name)||'';}
-function hasCustomName(b){return !!(b&&((S.names&&S.names[b.id])||(COM.names&&COM.names[b.id])));}
+function hasCustomName(b){return !!(b&&((S.names&&S.names[b.id])||(COM.names&&COM.names[b.id])||(b.name&&b.addr&&b.name!==b.addr)));}
 function bPhotos(bid){const out=[];((S.bphotos&&S.bphotos[bid])||[]).forEach(p=>out.push(p));comPhotos(bid).forEach(p=>out.push(p));reviewsFor(bid).forEach(r=>(r.photos||[]).forEach(p=>out.push(p)));issuesFor(bid).forEach(i=>(i.photos||[]).forEach(p=>out.push(p)));return out;}
 function fmtFull(d){if(!d)return '';const t=Date.parse(d+'T00:00:00');if(isNaN(t))return d;const dt=new Date(t);const M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return M[dt.getMonth()]+' '+dt.getDate()+', '+dt.getFullYear();}
 function todayISO(){const dt=new Date(now());const p=n=>String(n).padStart(2,'0');return dt.getFullYear()+'-'+p(dt.getMonth()+1)+'-'+p(dt.getDate());}
@@ -1042,11 +1061,8 @@ function viewPricing(){const access=hasAccess();
   return `<h1 class="page-t">Simple pricing, built to grow reviews</h1>
   <p class="page-sub">Browsing the records is always free. The best deal isn't a plan at all — <b style="color:var(--ink)">post one honest review and unlock the whole city for 30 days.</b> Radiator makes money on access; the review-to-unlock loop makes the reviews.</p>
   <div class="price-grid">
-    <div class="pcard"><div class="pname">Free browse</div><div class="pprice">$0</div><div class="ptag">For anyone checking a building before they sign.</div>
-      <ul><li>Search every building by name or address</li><li>Full City of Chicago records &amp; risk score</li><li>Transit, parking &amp; maintenance tracker</li><li>One preview review per building</li></ul>
-      <button class="btn outline full pbtn" onclick="tab('explore')">Start browsing</button></div>
     <div class="pcard feature"><span class="ribbon">Best deal · free</span><div class="pname">Give-to-get</div><div class="pprice">$0<small> · post 1 review</small></div><div class="ptag">Share your building experience, unlock everyone else's.</div>
-      <ul><li>Everything in Free</li><li><b>30 days of full access</b> to every review</li><li>All verified tenant reviews unlocked</li><li>Add photos &amp; log maintenance issues</li></ul>
+      <ul><li>Browse every building's City records &amp; risk score — free</li><li><b>30 days of full access</b> to every review</li><li>All tenant reviews unlocked</li><li>Add photos &amp; log maintenance issues</li></ul>
       <button class="btn primary full pbtn" onclick="go('write',null)">Write a review</button></div>
     <div class="pcard"><div class="pname">Day pass</div><div class="pprice">$9.99</div><div class="ptag">Touring this weekend and don't want to write yet.</div>
       <ul><li>Everything unlocked for 24 hours</li><li>Every review, city-wide</li><li>No account or commitment</li></ul>
@@ -1259,7 +1275,9 @@ function viewBuilding(bid){const b=bById(bid);if(!b)return '<div class="empty">B
 function revHTML(rv){const b=bById(rv.b);const on=!!S.helpful[rv.id];const hc=(rv.helpful||0)+(on?1:0);const dates=(rv.moveIn||'')+(rv.moveOut?('–'+rv.moveOut):(rv.moveIn?'–present':''));const SR=SOURCES[rv.src||'radiator']||SOURCES.radiator;const disc=rv.noRating||rv.src==='reddit';
   const topRight=disc?`<div class="rtop-stars" style="text-align:right"><div style="font-size:17px" title="${esc(rv.sentiment||'discussion')}">${sentEmoji(rv.sentiment)}</div><div style="font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);margin-top:2px">${rv.up?('▲ '+rv.up):'thread'}</div></div>`:`<div class="rtop-stars">${starsHTML(rv.overall)}<div style="font-weight:800;font-size:13px;margin-top:2px">${rv.overall.toFixed(1)}</div></div>`;
   const isExt=rv.src&&rv.src!=='radiator';
-  const badge=isExt?`<span class="srcbadge ${SR.cls}">${SR.name}</span>`:(()=>{const bd=badgeFor(rv);return bd?`<span class="vbadge ${bd.cls}">${bd.cls==='vb-cur'||bd.cls==='vb-for'?(rv.verified?'✓ ':'')+bd.t:bd.t}</span>`:'';})();
+  const badge=isExt?`<span class="srcbadge ${SR.cls}">${SR.name}</span>`:(()=>{const bd=badgeFor(rv);return bd?`<span class="vbadge ${bd.cls}">${bd.t}</span>`:'';})();
+  const replies=(!isExt)?comReplies(rv.id):[];
+  const replyHTML=replies.map(rp=>`<div style="margin:10px 0 0;padding:11px 13px;background:var(--surface-2);border-radius:10px;border-left:3px solid var(--azure)"><div style="display:flex;gap:8px;align-items:center;margin-bottom:4px"><span style="font-family:var(--mono);font-size:10.5px;font-weight:700;color:var(--azure)">↩ RESPONSE FROM MANAGEMENT</span><span style="font-family:var(--mono);font-size:9.5px;color:var(--ink-faint);border:1px solid var(--line);border-radius:999px;padding:1px 6px">unverified</span></div><div style="font-weight:700;font-size:12.5px;color:var(--ink)">${esc(rp.by||'Property management')}</div><div style="font-size:13px;color:var(--ink-soft);margin-top:2px;line-height:1.5">${esc(rp.text)}</div></div>`).join('');
   const period=(!isExt&&(rv.moveIn||rv.moveOut))?esc((rv.moveIn||'')+(rv.moveOut?'–'+rv.moveOut:(rv.moveIn?'–present':''))):'';
   const utags=(!isExt&&rv.unit2)?[rv.unit2.floor,rv.unit2.facing,rv.unit2.heatType&&rv.unit2.heatType+' heat',rv.unit2.acType].filter(Boolean).slice(0,3):[];
   return `<div class="rev"><div class="rhead"><div class="av">${initialOf(rv.author)}</div><div class="who"><div class="n">${esc(isExt?rv.author:(rv.author||'Tenant'))} ${badge}</div><div class="sub">${disc?'Discussion':(period||'')}${rv.unit2&&rv.unit2.floor?' · '+esc(rv.unit2.floor):''}</div></div>${topRight}</div>
@@ -1267,7 +1285,14 @@ function revHTML(rv){const b=bById(rv.b);const on=!!S.helpful[rv.id];const hc=(r
     ${(rv.wish&&rv.wish.trim())?`<div class="wishbox"><div class="wl">What I wish I'd known before signing</div><div class="wt">${esc(rv.wish)}</div></div>`:''}
     ${(rv.photos&&rv.photos.length)?`<div class="rphotos">${rv.photos.map(p=>`<img src="${p}" alt="Resident photo">`).join('')}</div>`:''}
     <div class="rmeta">${rv.would!=null?`<span class="wouldchip ${rv.would?'would-y':'would-n'}">${rv.would?'✓ Would live here again':'✕ Would not live here again'}</span>`:''}${rv.rent?`<span class="tagpill">$${rv.rent}/mo${rv.beds!=null?' · '+(rv.beds==='0'||rv.beds===0?'studio':rv.beds+'BR'):''}</span>`:''}${utags.map(t=>`<span class="tagpill">${esc(t)}</span>`).join('')}${rv.sample?'<span class="tagpill">SAMPLE</span>':''}</div>
-    <div class="ract"><button class="${on?'on':''}" onclick="toggleHelpful('${rv.id}')">${IC.heart}<span>Helpful · ${hc}</span></button><button class="reportbtn" onclick="reportReview('${rv.id}')">⚑ Report</button>${rv.mine?'<span class="mine-tag">Your review</span>':''}</div></div>`;
+    <div class="ract"><button class="${on?'on':''}" onclick="toggleHelpful('${rv.id}')">${IC.heart}<span>Helpful · ${hc}</span></button><button class="reportbtn" onclick="reportReview('${rv.id}')">⚑ Report</button>${rv.mine?'<span class="mine-tag">Your review</span>':''}</div>${!isExt?`${replyHTML}<button onclick="replyToReview('${rv.id}','${rv.b}')" style="margin-top:8px;background:none;border:none;color:var(--azure);font-family:var(--mono);font-size:11px;font-weight:600;cursor:pointer;padding:2px 0">↩ Respond as management</button>`:''}</div>`;
+}
+function replyToReview(rid,bid){
+  const text=prompt('Respond to this review as the building\'s management. This is posted publicly and marked as an unverified management response. Keep it professional — no personal information.');
+  if(text===null)return; const t=text.trim(); if(t.length<3){toast('Please write a bit more');return;}
+  const by=prompt('Your name or the company name (shown with the response):','Property management');
+  const rp={id:'rp'+now().toString(36)+Math.floor(Math.random()*1e4).toString(36),b:bid,rid,by:(by||'Property management').trim().slice(0,60),text:t.slice(0,2000),role:'management',ts:now()};
+  if(!S.replies)S.replies=[];S.replies.unshift(rp);persist();comPush('replies',rp);render();toast('Response posted.');
 }
 function reportReview(id){toast('Thanks — flagged for moderator review.');}
 function issueHTML(i){const dn=daysOpen(i.date);const tier=daysTier(dn);const resolved=i.status==='resolved';const mine=i.mine||(i.by&&i.by===S.handle);
@@ -1441,7 +1466,7 @@ function viewWrite(bid){const b=bid?bById(bid):null;
     ${pick}<input type="hidden" id="w-bid" value="${bid||''}">
     <div class="form-group"><div class="fg-t">🪪 Your residency</div>
       <div class="grid2"><div class="field" style="margin:0"><label for="w-status">You are a…</label><select id="w-status"><option value="current">Current tenant</option><option value="former">Former tenant</option></select></div>
-        <div class="field" style="margin:0"><label>Get verified <span style="color:var(--ink-faint);font-weight:500">(optional)</span></label><label style="display:flex;gap:8px;align-items:flex-start;font-size:12.5px;color:var(--ink-soft)"><input type="checkbox" id="w-verify" style="width:17px;height:17px;margin-top:1px;accent-color:var(--heat)"><span>I can show a moderator a redacted lease or bill for a <b>Verified</b> badge — no ID, file deleted after.</span></label></div></div>
+        <div class="field" style="margin:0"><label>Confirm your tenancy <span style="color:var(--ink-faint);font-weight:500">(optional)</span></label><label style="display:flex;gap:8px;align-items:flex-start;font-size:12.5px;color:var(--ink-soft)"><input type="checkbox" id="w-verify" style="width:17px;height:17px;margin-top:1px;accent-color:var(--heat)"><span>I confirm I actually lived or live at this address (shown as <b>self-reported</b>). A <b>✓ Verified</b> badge — where you upload a redacted lease we review privately and delete — is coming soon.</span></label></div></div>
       <div class="grid2" style="margin-top:12px"><div class="field" style="margin:0"><label for="w-in">Lived here since (year)</label><input type="text" id="w-in" placeholder="2023" maxlength="4" inputmode="numeric"></div><div class="field" style="margin:0"><label for="w-out">Until (year, blank if current)</label><input type="text" id="w-out" placeholder="2025" maxlength="7"></div></div>
     </div>
     <div class="field" style="margin:0"><label>Overall rating <span style="color:var(--risk)">*</span></label><div class="star-input" id="si-overall">${[1,2,3,4,5].map(i=>`<button type="button" onclick="setStar('overall',${i})">★</button>`).join('')}</div></div>
@@ -1493,7 +1518,7 @@ function submitReview(){let bid=$('#w-bid').value;
     yearBuilt:parseInt(val('w-year'))||0,
     moveIn:($('#w-in').value||'').trim(),moveOut:($('#w-out').value||'').trim(),status:val('w-status')||'current',
     would:draft.would,surprise:draft.surprise,unit2:Object.keys(unit2).length?unit2:null,
-    verified:$('#w-verify').checked,author:(S.handle?S.handle:'A Chicago renter'),helpful:0,photos:draft.photos.slice(),mine:true,date:now()};
+    selfConfirmed:$('#w-verify').checked,verified:false,author:(S.handle?S.handle:'A Chicago renter'),helpful:0,photos:draft.photos.slice(),mine:true,date:now()};
   S.reviews.unshift(rv);const wasLocked=!hasAccess();S.unlockedUntil=Math.max(S.unlockedUntil,now()+30*DAY);persist();comPush('reviews',rv);
   toast(wasLocked?'Review posted — 30 days unlocked! 🎉':'Review posted — thank you!');nav.prev=[{view:'explore',id:null}];go('building',bid);}
 
