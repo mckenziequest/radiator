@@ -64,6 +64,23 @@ function scoreOf(b) { let s = 100 - Math.min(85, b.open * 2.5); if (b.open >= 3)
 function gradeOf(s) { return s >= 85 ? 'A' : s >= 70 ? 'B' : s >= 55 ? 'C' : s >= 40 ? 'D' : 'F'; }
 function origin(req) { return (req.headers['x-forwarded-proto'] || 'https') + '://' + (req.headers.host || 'radiator-pkt6.onrender.com'); }
 
+// --- Preview-mode noindex gate --------------------------------------------
+// A non-production preview (e.g. radiator-preview.onrender.com) serves the same
+// content as production and must NOT be indexed as duplicate content. Protection
+// is OFF unless PREVIEW_MODE=1 is explicitly set, so production — which never
+// sets it — is always indexable by construction. As defense-in-depth it ALSO
+// refuses to activate on a known production host, so a mis-set PREVIEW_MODE on
+// getradiator.com still cannot noindex production. Uses the SAME host source as
+// origin() (req.headers.host, the external host Render passes through).
+const PROD_HOSTS = new Set(['getradiator.com', 'www.getradiator.com', 'radiator-pkt6.onrender.com']);
+const PREVIEW_ROBOTS = 'noindex, nofollow, noarchive';
+// Normalize a Host header for comparison: trim, lowercase, drop an optional :port.
+function normalizeHost(h) { return String(h == null ? '' : h).trim().toLowerCase().replace(/:\d+$/, ''); }
+function isPreview(req) {
+  if (process.env.PREVIEW_MODE !== '1') return false;                       // primary gate: explicit opt-in only
+  return !PROD_HOSTS.has(normalizeHost(req && req.headers && req.headers.host)); // never activate on a production host
+}
+
 // Compose the full HTML doc: SEO head + a server-rendered content block + the app.
 function shell(appBody, o) {
   const ld = o.jsonld ? `<script type="application/ld+json">${JSON.stringify(o.jsonld)}</script>` : '';
@@ -157,7 +174,7 @@ ${b.pg ? `<p>Managed as part of <a href="${o}/company/${esc(b.pg)}">Chicago prop
       url: canonical, areaServed: b.hood,
     };
     res.set('Cache-Control', 'public, max-age=600');
-    res.send(shell(getAppBody(), { title, desc, canonical, jsonld, ssr }));
+    res.send(shell(getAppBody(), { title, desc, canonical, jsonld, ssr, robots: isPreview(req) ? PREVIEW_ROBOTS : undefined }));
   });
 
   // ---- management-company / property-group page ----
@@ -178,7 +195,7 @@ ${b.pg ? `<p>Managed as part of <a href="${o}/company/${esc(b.pg)}">Chicago prop
 <ul>${bs.slice(0, 40).map(x => `<li><a href="${o}/building/${x.id}/${slug(x.addr)}">${esc(x.addr)}</a>, ${esc(x.hood)} — ${x.open} open violation${x.open === 1 ? '' : 's'}</li>`).join('')}</ul>`;
     const jsonld = { '@context': 'https://schema.org', '@type': 'Organization', name: 'Chicago property group #' + req.params.pg, url: canonical, areaServed: 'Chicago, IL' };
     res.set('Cache-Control', 'public, max-age=600');
-    res.send(shell(getAppBody(), { title, desc, canonical, jsonld, ssr }));
+    res.send(shell(getAppBody(), { title, desc, canonical, jsonld, ssr, robots: isPreview(req) ? PREVIEW_ROBOTS : undefined }));
   });
 
   // ---- /landlord/:pg — obsolete alias. The canonical landlord URL is
@@ -204,7 +221,7 @@ ${b.pg ? `<p>Managed as part of <a href="${o}/company/${esc(b.pg)}">Chicago prop
 <p><a href="${o}/directory">Browse all Chicago management companies</a></p>`;
     const jsonld = { '@context': 'https://schema.org', '@type': 'Organization', name: f.name, url: canonical, areaServed: 'Chicago, IL' };
     res.set('Cache-Control', 'public, max-age=600');
-    res.send(shell(getAppBody(), { title, desc, canonical, jsonld, ssr }));
+    res.send(shell(getAppBody(), { title, desc, canonical, jsonld, ssr, robots: isPreview(req) ? PREVIEW_ROBOTS : undefined }));
   });
 
   // ---- neighborhood page ----
@@ -221,12 +238,16 @@ ${b.pg ? `<p>Managed as part of <a href="${o}/company/${esc(b.pg)}">Chicago prop
 <p><a href="${o}/">Explore ${esc(hood)} on Radiator →</a></p>
 <ul>${bs.slice(0, 60).map(x => `<li><a href="${o}/building/${x.id}/${slug(x.addr)}">${esc(x.addr)}</a> — ${x.open} open violation${x.open === 1 ? '' : 's'}</li>`).join('')}</ul>`;
     res.set('Cache-Control', 'public, max-age=600');
-    res.send(shell(getAppBody(), { title, desc, canonical, jsonld: { '@context': 'https://schema.org', '@type': 'Place', name: hood + ', Chicago', url: canonical }, ssr }));
+    res.send(shell(getAppBody(), { title, desc, canonical, jsonld: { '@context': 'https://schema.org', '@type': 'Place', name: hood + ', Chicago', url: canonical }, ssr, robots: isPreview(req) ? PREVIEW_ROBOTS : undefined }));
   });
 
   // ---- robots.txt ----
+  // Crawling stays allowed in every mode so bots can fetch pages and SEE the
+  // noindex directive (a Disallow would block the fetch and defeat noindex). On
+  // a preview we simply do NOT advertise the sitemap; production is unchanged.
   app.get('/robots.txt', (req, res) => {
-    res.type('text/plain').send(`User-agent: *\nAllow: /\n\nSitemap: ${origin(req)}/sitemap.xml\n`);
+    const base = `User-agent: *\nAllow: /\n`;
+    res.type('text/plain').send(isPreview(req) ? base : base + `\nSitemap: ${origin(req)}/sitemap.xml\n`);
   });
 
   // ---- sitemap.xml (cached after first build) ----
@@ -260,4 +281,4 @@ ${b.pg ? `<p>Managed as part of <a href="${o}/company/${esc(b.pg)}">Chicago prop
   console.log(`SEO pages live: ${DATA.buildings.length} buildings, ${DATA.companies.length} companies, ${DATA.hoods.length} neighborhoods + sitemap.`);
 }
 
-module.exports = { mount, status };
+module.exports = { mount, status, isPreview, normalizeHost };

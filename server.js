@@ -45,6 +45,17 @@ app.use((req, res, next) => {
   next();
 });
 
+// --- Preview noindex: on a NON-production host with PREVIEW_MODE=1, tell
+//     crawlers not to index the preview (it duplicates production). This header
+//     covers EVERY response — HTML, robots.txt, sitemap, API, static — and
+//     entity HTML additionally carries a matching <meta name="robots"> (seo.js).
+//     seo.isPreview() is a no-op unless PREVIEW_MODE=1, and refuses to fire on a
+//     production host, so getradiator.com is never affected. ---
+app.use((req, res, next) => {
+  if (seo.isPreview(req)) res.set('X-Robots-Tag', 'noindex, nofollow, noarchive');
+  next();
+});
+
 // --- tiny in-memory cache (swap for Redis in production) ---
 const cache = new Map();
 function cacheGet(k) {
