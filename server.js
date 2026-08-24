@@ -106,6 +106,7 @@ app.get('/api/building', async (req, res) => {
 
     const result = combine(address, sources);
     result.photos = external.photos || [];
+    result.website = (external.google && external.google.website) || null;
     result.cached = !!cached;
     res.json(result);
   } catch (err) {
@@ -120,9 +121,42 @@ app.get('/api/building', async (req, res) => {
 // ============================================================================
 const GKEY = process.env.GOOGLE_PLACES_KEY;
 
+// If the building has an official website, its own hero/social image (og:image)
+// is the best photo we can show — grab it server-side, best effort.
+async function fetchOgImage(site) {
+  try {
+    const ctl = new AbortController();
+    const to = setTimeout(() => ctl.abort(), 6000);
+    const r = await fetch(site, {
+      redirect: 'follow',
+      signal: ctl.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; RadiatorBot/1.0; +https://getradiator.com)',
+        'Accept': 'text/html,application/xhtml+xml',
+      },
+    });
+    clearTimeout(to);
+    if (!r.ok || !/text\/html/i.test(r.headers.get('content-type') || '')) return null;
+    const html = (await r.text()).slice(0, 400000);
+    const m =
+      html.match(/<meta[^>]+(?:property|name)=["'](?:og:image(?::secure_url)?|twitter:image(?::src)?)["'][^>]*content=["']([^"']+)["']/i) ||
+      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]*(?:property|name)=["'](?:og:image(?::secure_url)?|twitter:image(?::src)?)["']/i);
+    if (!m) return null;
+    let u = m[1].trim().replace(/&amp;/g, '&');
+    try { u = new URL(u, r.url || site).href; } catch (e) { return null; }
+    if (!/^https:\/\//i.test(u)) return null;
+    return u;
+  } catch (e) { return null; }
+}
+
 // Build the ordered list of photo URLs for an address (relative /api paths).
 async function buildPhotos(address, google) {
   const out = [];
+  // 0) The property's OFFICIAL website photo, when a website exists — first.
+  if (google && google.website) {
+    const og = await fetchOgImage(google.website);
+    if (og) out.push(og);
+  }
   // 1) Street View of the exact building — real, recognizable, near-universal.
   if (GKEY) {
     try {
@@ -144,21 +178,45 @@ async function buildPhotos(address, google) {
   return out;
 }
 
+// Server-side image cache: building covers now load on EVERY card & page view,
+// so repeat requests must not re-hit Google (cost) or wait on it (speed).
+const IMG_TTL = 7 * 24 * 3600 * 1000; // 7 days, matches the browser cache header
+const IMG_MAX = 400;                  // ~40MB worst case at ~100KB/image
+const imgCache = new Map();
+function imgGet(k) {
+  const e = imgCache.get(k);
+  if (e && Date.now() - e.t < IMG_TTL) { imgCache.delete(k); imgCache.set(k, e); return e; } // LRU bump
+  if (e) imgCache.delete(k);
+  return null;
+}
+function imgSet(k, ct, buf) {
+  if (!buf || buf.length > 2 * 1024 * 1024) return; // don't hoard huge images
+  imgCache.set(k, { t: Date.now(), ct, buf });
+  while (imgCache.size > IMG_MAX) imgCache.delete(imgCache.keys().next().value);
+}
+function sendImg(res, ct, buf) {
+  res.set('Content-Type', ct || 'image/jpeg');
+  res.set('Cache-Control', 'public, max-age=604800'); // 7 days
+  res.end(buf);
+}
+
 // Proxy a single Google Place photo by reference. Streams the image; the key
 // is applied here, server-side, and never reaches the client.
 app.get('/api/photo', async (req, res) => {
   const ref = (req.query.ref || '').toString();
   if (!GKEY || !ref) return res.status(404).end();
+  const hit = imgGet('p:' + ref);
+  if (hit) return sendImg(res, hit.ct, hit.buf);
   try {
     const url =
       'https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=' +
       encodeURIComponent(ref) + '&key=' + GKEY;
     const r = await fetch(url); // follows the 302 to the actual image
     if (!r.ok) return res.status(502).end();
-    res.set('Content-Type', r.headers.get('content-type') || 'image/jpeg');
-    res.set('Cache-Control', 'public, max-age=604800'); // 7 days
+    const ct = r.headers.get('content-type') || 'image/jpeg';
     const buf = Buffer.from(await r.arrayBuffer());
-    res.end(buf);
+    imgSet('p:' + ref, ct, buf);
+    sendImg(res, ct, buf);
   } catch (e) { res.status(502).end(); }
 });
 
@@ -166,17 +224,29 @@ app.get('/api/photo', async (req, res) => {
 app.get('/api/streetview', async (req, res) => {
   const address = (req.query.address || '').toString().trim();
   if (!GKEY || !address) return res.status(404).end();
+  const key = 'sv:' + address.toLowerCase();
+  const hit = imgGet(key);
+  if (hit) return hit.neg ? res.status(404).end() : sendImg(res, hit.ct, hit.buf);
   try {
     const loc = `${address.split(',')[0]}, Chicago, IL`;
+    // Metadata first (free): without this, addresses with no coverage get Google's
+    // gray "no imagery" placeholder instead of a clean 404 the frontend can hide.
+    const meta = await (await fetch(
+      'https://maps.googleapis.com/maps/api/streetview/metadata?location=' +
+      encodeURIComponent(loc) + '&key=' + GKEY)).json();
+    if (!meta || meta.status !== 'OK') {
+      imgCache.set(key, { t: Date.now(), neg: true });
+      return res.status(404).end();
+    }
     const url =
       'https://maps.googleapis.com/maps/api/streetview?size=800x450&location=' +
       encodeURIComponent(loc) + '&fov=80&key=' + GKEY;
     const r = await fetch(url);
     if (!r.ok) return res.status(502).end();
-    res.set('Content-Type', r.headers.get('content-type') || 'image/jpeg');
-    res.set('Cache-Control', 'public, max-age=604800');
+    const ct = r.headers.get('content-type') || 'image/jpeg';
     const buf = Buffer.from(await r.arrayBuffer());
-    res.end(buf);
+    imgSet(key, ct, buf);
+    sendImg(res, ct, buf);
   } catch (e) { res.status(502).end(); }
 });
 
