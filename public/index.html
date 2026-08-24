@@ -189,6 +189,16 @@ h1.page-t{font-size:1.65rem; font-weight:900; letter-spacing:-.02em; margin:2px 
 .brk .track i{display:block;height:100%;border-radius:5px}
 .brk-sum{display:flex;justify-content:space-between;align-items:center;border-top:1px dashed var(--line-strong);margin-top:2px;padding-top:12px}
 .brk-sum .lg{font-family:var(--display);font-weight:800;font-size:1.5rem;font-variant-numeric:tabular-nums}
+.webbtns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:560px){.webbtns{grid-template-columns:1fr}}
+.webbtn{display:flex;align-items:center;gap:11px;border:1.5px solid var(--line-strong);border-radius:12px;padding:11px 13px;background:var(--surface);text-decoration:none;color:var(--ink);transition:.15s}
+.webbtn:hover{border-color:var(--heat);box-shadow:var(--shadow-sm);transform:translateY(-1px)}
+.webbtn .wbi{font-size:20px;flex:none;width:26px;text-align:center}
+.webbtn .wbtxt{display:flex;flex-direction:column;line-height:1.25;min-width:0;flex:1}
+.webbtn .wbt{font-weight:800;font-size:14px}
+.webbtn .wbs{font-size:11.5px;color:var(--ink-faint)}
+.webbtn .wbx{color:var(--ink-faint);font-size:13px;flex:none}
+.webbtn:hover .wbx{color:var(--heat-deep)}
 
 .drow{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:11px 0; border-bottom:1px solid var(--line)}
 .drow:last-child{border-bottom:none}
@@ -711,6 +721,32 @@ function gradeClass(g){return {A:'gA',B:'gB',C:'gC',D:'gD',F:'gF'}[g]||'gC';}
 function tierColor(g){return {A:'#37946A',B:'#4A9D5F',C:'#E0A32E',D:'#E07E3A',F:'#E0574A'}[g]||'#E0A32E';}
 function percentileOf(b){if(b.demo||b.lat==null)return null;const peers=REAL.filter(x=>x.hood===b.hood);if(peers.length<4)return null;const better=peers.filter(x=>x.open>b.open).length;const worse=peers.filter(x=>x.open<b.open).length;return {betterPct:Math.round(better/peers.length*100),worsePct:Math.round(worse/peers.length*100),clean:b.open===0};}
 function portfolioOf(b){if(b.demo){const s=DEMO.filter(x=>x.co===b.co);return{key:b.co,name:b.co,buildings:s};}const s=REAL.filter(x=>x.pg&&x.pg===b.pg);return{key:b.pg,name:'City property group #'+b.pg,buildings:s};}
+/* ===== management-company naming (shared, keyed by property group) ===== */
+function mgrKey(b){return 'pg'+((b&&b.pg)||'');}
+function managerNameOf(b){if(!b)return null;if(b.demo)return b.co||null;const k=mgrKey(b);return (S.names&&S.names[k])||(COM.names&&COM.names[k])||null;}
+function nameManager(bid){const b=bById(bid);if(!b||b.demo||!b.pg)return;const k=mgrKey(b);const cur=(S.names&&S.names[k])||'';const v=prompt('Who manages these buildings? Name the property-management company (e.g. "Pangea", "Planned Property Management") so renters can look them up:',cur);if(v===null)return;if(!S.names)S.names={};const t=v.trim();if(t){S.names[k]=t;comPush('names',{b:k,name:t,by:(S.handle||'A neighbor')});}else delete S.names[k];persist();render();toast(t?'Company named — now searchable across the web':'Name removed');}
+/* ===== "Around the web" deep links (no API needed — opens each site's live search) ===== */
+function webLinks(name,isCompany){const chi=' Chicago';const enc=s=>encodeURIComponent(s);
+  return {
+    reddit:'https://www.reddit.com/search/?q='+enc('"'+name+'"'+chi)+'&sort=relevance',
+    googleReddit:'https://www.google.com/search?q='+enc('site:reddit.com '+name+chi),
+    google:'https://www.google.com/search?q='+enc(name+chi+(isCompany?' reviews':' apartment reviews')),
+    yelp:'https://www.yelp.com/search?find_desc='+enc(name)+'&find_loc='+enc('Chicago, IL')
+  };
+}
+function aroundWebCard(name,isCompany){if(!name)return '';const L=webLinks(name,isCompany);
+  const btn=(href,label,sub,ic)=>`<a class="webbtn" href="${href}" target="_blank" rel="noopener noreferrer"><span class="wbi">${ic}</span><span class="wbtxt"><span class="wbt">${label}</span><span class="wbs">${sub}</span></span><span class="wbx">↗</span></a>`;
+  return `<div class="card"><div class="card-h"><span class="t">🌐 Around the web</span></div><div class="card-b">
+    <p class="small-note" style="margin:0 0 12px">See what Chicago renters say about <b style="color:var(--ink)">${esc(name)}</b> elsewhere — live, in their own words. Each opens that site's real search in a new tab.</p>
+    <div class="webbtns">
+      ${btn(L.reddit,'Reddit','Threads mentioning '+(isCompany?'this company':'this building'),'👽')}
+      ${btn(L.googleReddit,'Reddit via Google','Often surfaces more threads','🔎')}
+      ${btn(L.google,'Google','Ratings &amp; mentions','⭐')}
+      ${btn(L.yelp,'Yelp','Business reviews','📣')}
+    </div>
+    <div class="src-note" style="margin-top:12px">Radiator links out to public discussion — it doesn't publish or endorse it. Read the original before drawing conclusions.</div>
+  </div></div>`;
+}
 function qaFor(bid){const base=isDemo()?DEMO_QA.filter(q=>q.b===bid):comQA(bid);return dedupById(base,S.qa.filter(q=>q.b===bid));}
 function issuesFor(bid){const base=isDemo()?DEMO_ISSUES.filter(x=>x.b===bid):comIssues(bid);return dedupById(base,(S.issues||[]).filter(x=>x.b===bid));}
 function openIssuesFor(bid){return issuesFor(bid).filter(i=>i.status!=='resolved').sort((a,c)=>daysOpen(c.date)-daysOpen(a.date));}
@@ -835,7 +871,7 @@ function viewHome(){
     <div class="hero-land">
       <span class="hero-eyebrow">CHICAGO · ${total} BUILDINGS SCORED</span>
       <h1 class="hero-title">Check the building <span class="clip">before you sign</span>.</h1>
-      <p class="hero-sub">Real tenant experiences, rent history, transit, and official City of Chicago records — one honest page per apartment. A Carfax for Chicago rentals.</p>
+      <p class="hero-sub">Real tenant experiences, rent history, transit, and official City of Chicago records — one honest page per apartment, so you know a building's full history before you sign.</p>
       <div class="hero-search"><span class="hs-dot"></span><input id="qh" placeholder="Search a building name or address…" value="${esc(searchQ)}" oninput="searchQ=this.value" onkeydown="if(event.key==='Enter'){nav.view='explore';render();}"><button class="hs-btn" onclick="nav.view='explore';render();">Search</button></div>
       <div class="hero-chips">${['Logan Square','Lakeview','Reliable heat','Noca Blu'].map(q=>`<button class="hchip" onclick="searchQ='${esc(q)}';nav.view='explore';nav.prev=[];render();">${esc(q)}</button>`).join('')}</div>
     </div>
@@ -1031,6 +1067,7 @@ function viewBuilding(bid){const b=bById(bid);if(!b)return '<div class="empty">B
   const port=portfolioOf(b);const showPort=port.buildings.length>1;
   const metaLine=b.demo?`Built ${b.year} · ${b.units} units`:`${esc(b.hood)} · property group #${esc(b.pg||'—')}`;
   const dn=nameOf(b);const custom=hasCustomName(b);
+  const webName=custom?dn:(b.addr||dn);
 
   return `<div class="bprofile">
     <div>
@@ -1045,6 +1082,7 @@ function viewBuilding(bid){const b=bById(bid);if(!b)return '<div class="empty">B
       ${rentCard}
       ${gallery}
       ${reviewsSection(b)}
+      ${aroundWebCard(webName,false)}
       ${qaBlock}
     </div>
     <div>
@@ -1146,10 +1184,19 @@ function viewLandlord(bid){const b=bById(bid);if(!b)return '<div class="empty">N
   const bs=port.buildings.map(x=>{x._r=ratingOf(x.id);x._s=scoreOf(x);return x;}).sort((a,c)=>riskOf(c)-riskOf(a));
   const rs=bs.flatMap(x=>reviewsFor(x.id));const avg=rs.length?rs.reduce((a,r)=>a+r.overall,0)/rs.length:0;
   const totOpen=bs.reduce((a,x)=>a+(x.demo?x.data.viol:x.open),0);const totFixed=bs.reduce((a,x)=>a+(x.demo?0:x.fixed),0);const worst=Math.max(...bs.map(riskOf));
-  return `<div class="acct-hero"><div class="av" style="background:var(--azure)">🏢</div><div><div class="h">${esc(port.name)}</div><div class="s">${bs.length} building${bs.length===1?'':'s'} in records · <span class="flag ${RISK_CLASS[worst]}" style="display:inline-flex"><span class="dot"></span>${RISK_LABEL[worst]}</span></div></div></div>
+  const mgr=managerNameOf(b);const title=mgr||port.name;const canName=!b.demo&&b.pg;
+  // common issue areas across the whole portfolio
+  const catAgg={};bs.forEach(x=>(x.cats||[]).forEach(c=>{catAgg[c.d]=(catAgg[c.d]||0)+(c.c||0);}));
+  const topCats=Object.entries(catAgg).sort((a,c)=>c[1]-a[1]).slice(0,4);
+  const catCard=topCats.length?`<div class="card"><div class="card-h"><span class="t">🧩 What breaks across their buildings</span></div><div class="card-b"><div class="catbars">${topCats.map(([d,c])=>`<div class="catrow"><span class="cl">${esc(d)}</span><span class="cb"><i style="width:${clampN(c/(topCats[0][1])*100,8,100)}%"></i></span><span class="cv">${c}</span></div>`).join('')}</div><div class="src-note" style="margin-top:10px">Open-violation categories summed across all ${bs.length} buildings in this portfolio.</div></div></div>`:'';
+  const webBlock = mgr ? aroundWebCard(mgr,true)
+    : (canName?`<div class="card"><div class="card-h"><span class="t">🌐 Around the web</span></div><div class="card-b"><p class="small-note" style="margin:0 0 12px">Know who runs these buildings? Name the management company and Radiator will let anyone look them up across Reddit, Google &amp; Yelp — company reputation, not just one address.</p><button class="btn primary" style="width:auto;display:inline-flex" onclick="nameManager('${bid}')">${IC.plus}Name this management company</button></div></div>`:'');
+  return `<div class="acct-hero"><div class="av" style="background:var(--azure)">🏢</div><div><div class="h">${esc(title)}</div><div class="s">${bs.length} building${bs.length===1?'':'s'} in records · <span class="flag ${RISK_CLASS[worst]}" style="display:inline-flex"><span class="dot"></span>${RISK_LABEL[worst]}</span>${mgr&&canName?` · <a onclick="nameManager('${bid}')" style="cursor:pointer">✎ edit name</a>`:''}</div></div></div>
   <div class="statgrid" style="margin-top:16px"><div class="statbox"><div class="n">${avg?avg.toFixed(1):'—'}</div><div class="k">Avg rating</div></div><div class="statbox"><div class="n">${totOpen}</div><div class="k">Open viol.</div></div><div class="statbox"><div class="n">${b.demo?bs.reduce((a,x)=>a+x.data.evict,0):totFixed}</div><div class="k">${b.demo?'Evictions':'Resolved'}</div></div></div>
+  ${webBlock}
+  ${catCard}
   <div class="section-t">Buildings (${bs.length})</div><div class="bgrid">${bs.map(bcard).join('')}</div>
-  <p class="small-note" style="margin-top:16px">${b.demo?'Sample portfolio for demonstration.':'Buildings the City of Chicago groups under the same internal property group (#'+esc(b.pg)+') — often shared ownership or management. Owner names are not published in this dataset.'}</p>`;
+  <p class="small-note" style="margin-top:16px">${b.demo?'Sample portfolio for demonstration.':'Buildings the City of Chicago groups under the same internal property group (#'+esc(b.pg)+') — often shared ownership or management. The city dataset doesn\'t publish the operator\'s name, so renters name it here.'}</p>`;
 }
 
 /* ============ COMPARE ============ */
