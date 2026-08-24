@@ -558,6 +558,99 @@ table.cmp td.big{font-weight:800; font-variant-numeric:tabular-nums; font-family
 
 @media print{ .sidebar,.appbar,.mobtabs,.rail-actions,.sticky-cta,#toast{display:none!important} .shell{grid-template-columns:1fr} .bprofile{grid-template-columns:1fr} .card{break-inside:avoid} }
 </style>
+<style id="redesign">
+/* ============ 2026 REDESIGN LAYER ============ */
+:root{--paper:#FAF8F4;--line:rgba(40,30,22,0.09);--line-strong:rgba(40,30,22,0.15)}
+:root:not([data-theme="light"]) .samplebanner,:root .samplebanner{display:none!important}
+body{background:var(--paper)}
+
+/* --- top navigation (replaces sidebar) --- */
+.shell{display:block!important;grid-template-columns:none!important;max-width:none!important}
+.sidebar{display:none!important}
+.appbar{display:none!important}
+.topnav{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--paper) 90%,transparent);backdrop-filter:saturate(1.1) blur(10px);border-bottom:1px solid var(--line)}
+.tn-in{max-width:1180px;margin:0 auto;display:flex;align-items:center;gap:20px;padding:13px 26px}
+.tn-brand{display:flex;align-items:center;gap:9px;background:none;border:none;cursor:pointer;padding:0}
+.tn-brand svg{width:25px;height:25px}
+.tn-brand .wm{font-family:var(--display);font-weight:800;font-size:1.22rem;letter-spacing:-.03em;color:var(--ink)}
+.tn-links{display:flex;gap:2px;margin-left:6px;overflow-x:auto;scrollbar-width:none}
+.tn-links::-webkit-scrollbar{display:none}
+.tn-i{padding:8px 15px;border-radius:9px;font-weight:600;font-size:14.5px;color:var(--ink-soft);background:none;border:none;cursor:pointer;white-space:nowrap}
+.tn-i:hover{background:var(--surface-2);color:var(--ink)}
+.tn-i.on{color:var(--ink);background:var(--surface-2)}
+.tn-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.tn-user{width:38px;height:38px;border-radius:50%;background:var(--surface-2);display:grid;place-items:center;border:1px solid var(--line);color:var(--ink-soft)}
+.tn-user svg{width:18px;height:18px}
+.page{max-width:1120px;margin:0 auto;padding:28px 26px 80px}
+.page.wide{max-width:1240px}
+.backlink{background:none;border:none;color:var(--ink-soft);font-weight:600;font-size:14px;padding:2px 0;margin-bottom:14px;cursor:pointer;display:inline-flex;align-items:center;gap:5px}
+.backlink:hover{color:var(--ink)}
+@media(max-width:760px){.tn-links{gap:0}.tn-i{padding:8px 10px;font-size:13.5px}.tn-write-txt{display:none}.tn-in{padding:11px 14px;gap:10px}.page{padding:18px 16px 96px}}
+
+/* --- colour discipline: orange only for actions / scores / highlights --- */
+.hero-land{background:var(--surface)!important}
+.nav-i.on{background:var(--surface-2);color:var(--ink)}
+.nav-i.on svg{opacity:1}
+.pctbadge,.hotstrip{background:var(--surface-2)!important;border:1px solid var(--line)}
+
+/* --- monospace reduced ~75%: keep only for tiny data labels/dates --- */
+.hero-eyebrow,.lp-sec-head .eb,.lp-stats,.landing-foot,.tn-links,.tn-i{font-family:var(--sans)!important}
+.hero-eyebrow{letter-spacing:.09em;font-weight:700;background:var(--heat-soft);color:var(--heat-deep)}
+.lp-stats{letter-spacing:0}
+.lp-sec-head .eb{letter-spacing:.12em}
+
+/* --- fewer heavy cards; sections breathe with spacing + subtle dividers --- */
+.card{border:none!important;background:transparent!important;box-shadow:none!important;border-radius:0}
+.card + .card{margin-top:6px}
+.card-h{background:none!important;border-bottom:none!important;padding:0 0 8px!important;margin-bottom:6px}
+.card-h .t{font-size:1.05rem;letter-spacing:-.01em}
+.card-b{padding:2px 0 26px!important}
+.sec{padding:22px 0;border-top:1px solid var(--line)}
+.sec:first-child{border-top:none}
+/* keep score, pricing, access cards as real cards */
+.rail-score,.pcard,.access-card,.connect,.su-box{background:var(--surface)!important;border:1px solid var(--line)!important;border-radius:16px!important;box-shadow:var(--shadow-sm)!important}
+.rail-score .card-b,.pcard .card-b{padding:inherit!important}
+
+/* --- larger building photos --- */
+.hero{height:360px!important;border-radius:18px}
+.gallery{gap:12px}
+.gallery .g{width:260px;height:180px;border-radius:14px}
+.bcard .thumb{height:172px}
+.bgrid{gap:18px}
+
+/* --- Radiator Score as the signature brand element --- */
+.rail-score{padding:24px 20px}
+.rail-score .dial{width:118px;height:118px}
+.rail-score .num{font-size:1.15rem}
+.score-brand-lbl{font-family:var(--display);font-weight:800;font-size:.82rem;letter-spacing:.02em;color:var(--heat-deep);text-transform:none;margin-top:2px}
+
+/* --- profile tabs --- */
+.ptabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:20px 0 6px;overflow-x:auto;scrollbar-width:none}
+.ptabs::-webkit-scrollbar{display:none}
+.ptab{padding:11px 16px;font-weight:650;font-size:14.5px;color:var(--ink-soft);background:none;border:none;border-bottom:2.5px solid transparent;cursor:pointer;white-space:nowrap;margin-bottom:-1px}
+.ptab:hover{color:var(--ink)}
+.ptab.on{color:var(--heat-deep);border-bottom-color:var(--heat)}
+
+/* --- editorial summary --- */
+.editorial{font-family:var(--display);font-weight:600;font-size:1.28rem;line-height:1.42;letter-spacing:-.01em;color:var(--ink);margin:6px 0 4px;max-width:60ch}
+@media(max-width:600px){.editorial{font-size:1.12rem}}
+
+/* --- search-first hero --- */
+.search-hero{position:relative;border-radius:22px;overflow:hidden;min-height:440px;display:flex;align-items:center;justify-content:center;text-align:center;margin-top:2px;background:#2a2320}
+.search-hero .sh-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.6}
+.search-hero .sh-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(28,20,14,.34),rgba(28,20,14,.74))}
+.sh-inner{position:relative;z-index:2;padding:60px 24px;max-width:740px}
+.sh-inner .hero-eyebrow{background:rgba(255,255,255,.16)!important;color:#fff!important}
+.sh-inner h1{font-family:var(--display);font-weight:800;letter-spacing:-.03em;font-size:clamp(2.2rem,5vw,3.5rem);line-height:1.04;color:#fff;margin:16px 0 12px}
+.sh-inner p{color:rgba(255,255,255,.88);font-size:1.06rem;max-width:46ch;margin:0 auto 26px;line-height:1.5}
+.sh-search{display:flex;gap:8px;max-width:580px;margin:0 auto;background:#fff;border-radius:16px;padding:7px 7px 7px 18px;box-shadow:0 24px 60px -22px rgba(0,0,0,.6);align-items:center}
+.sh-search .si{width:20px;height:20px;color:var(--ink-faint);flex:none}
+.sh-search input{flex:1;border:none;background:none;font-size:16px;color:var(--ink);outline:none;padding:12px 4px}
+.sh-search .hs-btn{background:var(--brand-grad,linear-gradient(100deg,#F59E2E,#F26B3A 60%,#E0574A));color:#fff;border:none;border-radius:11px;padding:13px 26px;font-weight:700;font-size:15px;cursor:pointer;white-space:nowrap}
+.sh-inner .lp-chips{justify-content:center;margin-top:16px}
+.sh-inner .lp-chips button{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.24);color:#fff}
+.sh-inner .lp-chips button:hover{background:rgba(255,255,255,.26)}
+</style>
 
 <div id="app"><div style="padding:40px">Loading Radiator…</div></div>
 <div id="toast"></div>
@@ -833,7 +926,7 @@ let violSort='new',violSortFor=null,violShowAll=false,violShowAllFor=null;
 function setViolSort(v,bid){violSort=v;violSortFor=bid;render();}
 function toggleViolAll(bid){violShowAll=!(violShowAllFor===bid&&violShowAll);violShowAllFor=bid;render();}
 function violationsCard(b){if(b.demo)return '';const bid=b.id;fetchViol(b);const v=_violCache[bid];
-  const wrap=inner=>`<div class="card"><div class="card-h"><span class="t">📋 Violation history</span></div><div class="card-b">${inner}</div></div>`;
+  const wrap=inner=>`<div class="card"><div class="card-h"><span class="t">Violation history</span></div><div class="card-b">${inner}</div></div>`;
   if(v===undefined)return wrap('<p class="small-note" style="padding:6px 0">Loading City of Chicago violation records…</p>');
   if(v.error||!v.violations||!v.violations.length)return wrap('<p class="small-note" style="padding:6px 0">No itemized violation records on file for this exact address in the City dataset.</p>');
   const cap=s=>{s=String(s||'').toLowerCase();return s.charAt(0).toUpperCase()+s.slice(1);};
@@ -850,7 +943,7 @@ function violationsCard(b){if(b.demo)return '';const bid=b.id;fetchViol(b);const
   const shown=showAll?ordered:ordered.slice(0,8);const more=ordered.length-shown.length;
   const row=x=>{const open=isOpen(x);return `<div style="padding:10px 0;border-bottom:1px solid var(--line)"><div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline"><span style="font-weight:650;font-size:13.5px;color:var(--ink)">${esc(cap(x.desc))}</span><span style="flex:none;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;${open?'background:#FBE9E7;color:#C0392B':'background:#E7F5EC;color:#2E7D4F'}">${open?'OPEN':'Resolved'}</span></div><div style="font-size:12px;color:var(--ink-soft);margin-top:3px">${esc(x.date||'')}${x.dept?' · '+esc(cap(x.dept)):''}</div>${x.detail?`<div style="font-size:12.5px;color:var(--ink-soft);margin-top:5px;line-height:1.45">${esc(clip(x.detail,180))}</div>`:''}</div>`;};
   const toggle=(more>0||showAll)?`<div style="margin-top:12px"><button class="btn ghost sm" style="width:auto;display:inline-flex" onclick="toggleViolAll('${bid}')">${showAll?'Show fewer':'Show all '+ordered.length+' records'}</button></div>`:'';
-  return `<div class="card"><div class="card-h"><span class="t">📋 Violation history (${v.count})</span><span class="small-note" style="color:var(--ink-faint)">${v.open} open · ${v.resolved} resolved</span></div><div class="card-b">${sortRow}<div>${shown.map(row).join('')}</div>${toggle}<div class="src-note" style="margin-top:8px">Source: City of Chicago Building Violations (dataset 22u3-xenr), looked up live by address.</div></div></div>`;}
+  return `<div class="card"><div class="card-h"><span class="t">Violation history (${v.count})</span><span class="small-note" style="color:var(--ink-faint)">${v.open} open · ${v.resolved} resolved</span></div><div class="card-b">${sortRow}<div>${shown.map(row).join('')}</div>${toggle}<div class="src-note" style="margin-top:8px">Source: City of Chicago Building Violations (dataset 22u3-xenr), looked up live by address.</div></div></div>`;}
 function reviewsFor(bid){const base=isDemo()?DEMO_REVIEWS.concat(EXT_DEMO_REVIEWS).filter(r=>r.b===bid):comReviews(bid);return dedupById(base,S.reviews.filter(r=>r.b===bid));}
 function ratingOf(bid){if(_rCache[bid])return _rCache[bid];const rs=reviewsFor(bid);const r=rs.length?{avg:rs.reduce((a,x)=>a+x.overall,0)/rs.length,n:rs.length}:{avg:0,n:0};return _rCache[bid]=r;}
 function subAvgOf(bid){const rs=reviewsFor(bid);const o={};REVIEW_DIMS.forEach(d=>{const v=rs.map(r=>r.sub&&r.sub[d.k]).filter(x=>x>0);o[d.k]=v.length?v.reduce((a,b)=>a+b,0)/v.length:0;});return o;}
@@ -893,7 +986,7 @@ function neighborhoodLinks(hood){const enc=s=>encodeURIComponent(s);const h=hood
 }
 function neighborhoodWebCard(hood){if(!hood||hood==='Chicago')return '';const L=neighborhoodLinks(hood);
   const btn=(href,label,sub,ic)=>`<a class="webbtn" href="${href}" target="_blank" rel="noopener noreferrer"><span class="wbi">${ic}</span><span class="wbtxt"><span class="wbt">${label}</span><span class="wbs">${sub}</span></span><span class="wbx">↗</span></a>`;
-  return `<div class="card"><div class="card-h"><span class="t">👋 ${esc(hood)} community</span></div><div class="card-b">
+  return `<div class="card"><div class="card-h"><span class="t">${esc(hood)} community</span></div><div class="card-b">
     <p class="small-note" style="margin:0 0 12px">Connect with neighbors in <b style="color:var(--ink)">${esc(hood)}</b> — each opens that network's real search in a new tab.</p>
     <div class="webbtns">
       ${btn(L.facebook,'Facebook groups','Find the neighborhood group','👥')}
@@ -922,7 +1015,7 @@ function postSignup(ctx){const el=document.getElementById('su-'+ctx);if(!el)retu
 function aroundWebCard(name,isCompany,site){if(!name)return '';const L=webLinks(name,isCompany);
   const btn=(href,label,sub,ic)=>`<a class="webbtn" href="${href}" target="_blank" rel="noopener noreferrer"><span class="wbi">${ic}</span><span class="wbtxt"><span class="wbt">${label}</span><span class="wbs">${sub}</span></span><span class="wbx">↗</span></a>`;
   const siteHost=(()=>{try{return site?new URL(site).hostname.replace(/^www\./,''):null;}catch(e){return null;}})();
-  return `<div class="card"><div class="card-h"><span class="t">🌐 Around the web</span></div><div class="card-b">
+  return `<div class="card"><div class="card-h"><span class="t">Around the web</span></div><div class="card-b">
     <p class="small-note" style="margin:0 0 12px">See what Chicago renters say about <b style="color:var(--ink)">${esc(name)}</b> elsewhere — live, in their own words. Each opens that site's real search in a new tab.</p>
     <div class="webbtns">
       ${siteHost?btn(esc(site),'Official website',esc(siteHost),'🏛️'):''}
@@ -1038,19 +1131,12 @@ function render(){
     :`<div class="samplebanner live">Live City of Chicago building records · ${REAL.length} buildings · updated ${esc(CHI.generated||'')}</div>`;
   const showBack = ['building','landlord','write','issue','neighborhood','guide','terms','privacy','guidelines','moderate','firm'].includes(v);
   $('#app').innerHTML=`
-    ${banner}
-    <div class="shell">
-      ${sidebar()}
-      <div class="main">
-        <div class="appbar">
-          <div class="mob-brand" onclick="tab('home')" style="cursor:pointer">${IC.radiator}<span class="wm">radiator</span></div>
-          ${showBack?`<button class="back" onclick="back()" aria-label="Back">‹</button>`:''}
-          ${isHome?'<div class="spacer"></div>':`<div class="searchbox">${IC.search}<input id="q" placeholder="Search building name or address (e.g. Noca Blu)" value="${esc(searchQ)}" oninput="onSearch(this.value)" autocomplete="off"></div>
-          <div class="spacer"></div>`}
-        </div>
-        <div class="content ${(v==='map'||v==='compare')?'wide':''}"><div class="screen">${inner}</div>${v==='home'?'':siteFooter()}</div>
-      </div>
-    </div>
+    ${topnav()}
+    <main class="page ${(v==='map'||v==='compare')?'wide':''}">
+      ${showBack?`<button class="backlink" onclick="back()" aria-label="Back">‹ Back</button>`:''}
+      <div class="screen">${inner}</div>
+      ${v==='home'?'':siteFooter()}
+    </main>
     ${mobtabs()}`;
   if(v==='map') drawMap('map-main');
   if(v==='write') initWriteForm();
@@ -1064,6 +1150,22 @@ function seoTitle(view,id){
   if(view==='landlord'){const b=bById(id);const m=b&&managerNameOf(b);if(m)return m+' — Chicago landlord reviews | Radiator';}
   if(view==='pricing')return 'Pricing | Radiator';
   return 'Radiator — Check a Chicago building before you sign';
+}
+function topnav(){const v=nav.view;const isSearch=['explore','building','landlord','firm','neighborhood','neighborhoods'].includes(v);
+  const item=(view,label,on)=>`<button class="tn-i ${on?'on':''}" onclick="tab('${view}')">${label}</button>`;
+  return `<header class="topnav"><div class="tn-in">
+    <button class="tn-brand" onclick="tab('home')">${IC.radiator}<span class="wm">radiator</span></button>
+    <nav class="tn-links">
+      ${item('explore','Search',isSearch&&v!=='map')}
+      ${item('map','Map',v==='map')}
+      ${item('directory','Rankings',v==='directory')}
+      ${item('saved','Saved',v==='saved')}
+    </nav>
+    <div class="tn-right">
+      <button class="btn primary sm" style="width:auto;display:inline-flex;gap:6px" onclick="go('write',null)">${IC.plus}<span class="tn-write-txt">Write a review</span></button>
+      <button class="tn-user" onclick="tab('profile')" aria-label="Your profile">${IC.user}</button>
+    </div>
+  </div></header>`;
 }
 function sidebar(){const v=nav.view;const isExp=['explore','building','landlord'].includes(v);const cmpN=S.compare.length;
   const item=(view,ic,label,on,extra='')=>`<button class="nav-i ${on?'on':''}" onclick="tab('${view}')">${ic}<span>${label}</span>${extra}</button>`;
@@ -1155,7 +1257,7 @@ function viewHome(){
   const total=REAL.length.toLocaleString();
   const nHoods=(HOODS&&HOODS.length)||77;
   // hero building: a recognizable seeded building with a real Street View
-  const heroB=REAL.find(x=>x.addr==='2340 N CALIFORNIA Ave')||REAL.find(x=>SEED_NAMES[x.addr])||REAL.find(x=>x.open>0)||REAL[0];
+  const heroB=REAL.find(x=>x.addr==='555 W MADISON St')||REAL.find(x=>x.addr==='220 E ILLINOIS St')||REAL.find(x=>SEED_NAMES[x.addr])||REAL[0];
   const heroSv=(typeof svPhoto==='function')?svPhoto(heroB):null;
   const heroSc=scoreOf(heroB),heroG=gradeOf(heroSc),heroName=nameOf(heroB)||heroB.addr;
   const chip=(label)=>`<button class="hchip" onclick="searchQ='${esc(label)}';nav.view='explore';nav.prev=[];render();">${esc(label)}</button>`;
@@ -1163,28 +1265,25 @@ function viewHome(){
   const hoodCard=(h)=>{const hb=REAL.find(x=>x.hood===h.hood);const sv=(hb&&typeof svPhoto==='function')?svPhoto(hb):null;
     return `<button class="hood-photo-card" onclick="go('neighborhood','${esc(h.hood)}')">${sv?`<img src="${sv}" alt="" onerror="this.style.display='none'">`:''}<div class="hg"></div><div class="ht"><div class="nm">${esc(h.hood)}</div><div class="s">${h.n} buildings</div></div></button>`;};
   return `<div class="landing">
-    <div class="lp-hero">
-      <div class="lp-hero-l">
-        <span class="hero-eyebrow">✳ BEFORE YOU SIGN</span>
-        <h1 class="hero-title">Rent smarter. <span class="clip">Know the whole story.</span></h1>
-        <p class="hero-sub">Every Chicago address gets one honest Radiator Score — built from real City code records, verified tenant reviews, and Google, Yelp &amp; Reddit in one place.</p>
-        <div class="lp-search"><input id="qh" placeholder="Search an address, building, or landlord…" value="${esc(searchQ)}" oninput="searchQ=this.value" onkeydown="if(event.key==='Enter'){nav.view='explore';nav.prev=[];render();}"><button class="hs-btn" onclick="nav.view='explore';nav.prev=[];render();">Search</button></div>
-        <div class="lp-chips">${['2340 N California Ave','Logan Square','Noca Blu'].map(chip).join('')}</div>
-      </div>
-      <div class="lp-hero-r">
-        <div class="lp-bcard" onclick="go('building','${heroB.id}')">${heroSv?`<img src="${heroSv}" alt="" onerror="this.parentNode.style.background='linear-gradient(135deg,var(--azure-soft),var(--heat-soft))'">`:''}</div>
-        <div class="lp-chip"><div class="dial" style="--sweep:${(heroSc/100*360).toFixed(0)}deg;--tier:${tierColor(heroG)}"><div class="dial-in"><div class="dial-g" style="font-size:.9rem">${heroG}</div></div></div><div><div class="k">RADIATOR SCORE</div><div class="nm">${esc(heroName)}</div><div class="gr">${heroSc} / 100 · ${RISK_LABEL[riskOf(heroB)]}</div></div></div>
-        <div class="lp-star">KNOW<br>BEFORE<br>YOU SIGN</div>
+    <div class="search-hero">
+      ${heroSv?`<img class="sh-bg" src="${heroSv}" alt="Chicago building" onerror="this.style.display='none'">`:''}
+      <div class="sh-overlay"></div>
+      <div class="sh-inner">
+        <span class="hero-eyebrow">BEFORE YOU SIGN</span>
+        <h1>Check any Chicago building before you sign.</h1>
+        <p>Real tenant reviews, rent history, and official City of Chicago records — one honest page per address.</p>
+        <div class="sh-search"><span class="si">${IC.search}</span><input id="qh" placeholder="Search an address, building, or landlord…" value="${esc(searchQ)}" oninput="searchQ=this.value" onkeydown="if(event.key==='Enter'){nav.view='explore';nav.prev=[];render();}"><button class="hs-btn" onclick="nav.view='explore';nav.prev=[];render();">Search</button></div>
+        <div class="lp-chips">${['2340 N California Ave','Logan Square','Fulton Grace','Noca Blu'].map(chip).join('')}</div>
       </div>
     </div>
-    <div class="lp-stats"><span class="ttl">✳ CITY OF CHICAGO OPEN DATA</span> &nbsp; <b>${total}</b> buildings &nbsp;·&nbsp; <b>${nHoods}</b> neighborhoods &nbsp;·&nbsp; <b>4</b> review sources &nbsp;·&nbsp; <b>144</b> CTA ‘L’ stations</div>
-    <div class="lp-sec-head"><span class="eb">✳ WHY RADIATOR</span><h2>Everything about a building.<br>One honest page.</h2></div>
+    <div class="lp-stats"><span class="ttl">CITY OF CHICAGO OPEN DATA</span> &nbsp; <b>${total}</b> buildings &nbsp;·&nbsp; <b>${nHoods}</b> neighborhoods &nbsp;·&nbsp; <b>4</b> review sources &nbsp;·&nbsp; <b>144</b> CTA ‘L’ stations</div>
+    <div class="lp-sec-head"><span class="eb">WHY RADIATOR</span><h2>Everything about a building.<br>One honest page.</h2></div>
     <div class="feat3">
       <div class="fcard"><div class="fic">🌡️</div><h3>The Radiator Score</h3><p>A 0–100 score and letter grade from real city violation records and verified tenant reviews — weighted, not vibes.</p></div>
       <div class="fcard"><div class="fic">🏛️</div><h3>Real City records</h3><p>Every code violation pulled straight from City of Chicago open data — ${total} buildings, open vs resolved, in plain English.</p></div>
       <div class="fcard"><div class="fic">💬</div><h3>Reviews that count</h3><p>Verified tenants rate heat, maintenance &amp; noise — plus Google, Yelp &amp; Reddit ratings folded into one score.</p></div>
     </div>
-    <div class="lp-sec-head"><span class="eb">✳ NEIGHBORHOODS</span><h2>Start where you're looking</h2></div>
+    <div class="lp-sec-head"><span class="eb">NEIGHBORHOODS</span><h2>Start where you're looking</h2></div>
     <div class="hood-photo-grid">${hoods.map(hoodCard).join('')}</div>
     <div class="g2g-band" style="margin-top:34px">
       <div><h2>Give a little. Get all of Chicago.</h2><p>Post one honest review of a place you've lived and unlock full records, scores &amp; reviews for every building in Chicago. It stays free. <a onclick="tab('pricing')" style="color:#fff;text-decoration:underline;text-underline-offset:3px;cursor:pointer;white-space:nowrap">See all plans →</a></p></div>
@@ -1254,7 +1353,7 @@ function viewExplore(){
     <span class="selpill ${riskFilter!=='all'?'act':''}"><select onchange="setFilter('risk',this.value)"><option value="all">Any risk</option><option value="good"${riskFilter==='good'?' selected':''}>Good standing</option><option value="watch"${riskFilter==='watch'?' selected':''}>Watch list</option><option value="risk"${riskFilter==='risk'?' selected':''}>High risk</option></select></span>
     <span class="selpill"><select onchange="setFilter('sort',this.value)"><option value="score"${sortBy==='score'?' selected':''}>Top score</option><option value="risk"${sortBy==='risk'?' selected':''}>Highest risk</option><option value="rating"${sortBy==='rating'?' selected':''}>Top rated</option><option value="reviews"${sortBy==='reviews'?' selected':''}>Most reviewed</option><option value="az"${sortBy==='az'?' selected':''}>A–Z</option></select></span>
   </div>
-  ${(()=>{const ch=companyMatches(searchQ.trim());return ch.length?`<div class="section-t" style="margin:2px 0 10px">🏢 Management companies (${ch.length})</div><div class="bgrid" style="margin-bottom:22px">${ch.map(companyCard).join('')}</div><div class="section-t" style="margin:0 0 10px">Buildings (${list.length.toLocaleString()})</div>`:'';})()}
+  ${(()=>{const ch=companyMatches(searchQ.trim());return ch.length?`<div class="section-t" style="margin:2px 0 10px">Management companies (${ch.length})</div><div class="bgrid" style="margin-bottom:22px">${ch.map(companyCard).join('')}</div><div class="section-t" style="margin:0 0 10px">Buildings (${list.length.toLocaleString()})</div>`:'';})()}
   <div class="result-meta"><span class="count">${list.length.toLocaleString()} building${list.length===1?'':'s'}${list.length>RENDER_CAP?' · showing '+RENDER_CAP:''}</span></div>
   ${list.length?`<div class="bgrid">${list.slice(0,RENDER_CAP).map(bcard).join('')}</div>${list.length>RENDER_CAP?`<p class="small-note" style="text-align:center;margin-top:18px">Showing the top ${RENDER_CAP} of ${list.length.toLocaleString()} — narrow it with search or a neighborhood filter.</p>`:''}`
     :`<div class="empty"><div class="em">🔍</div><div class="t">No building on file for “${esc(searchQ||'that')}”</div><div class="d">We track ${REAL.length.toLocaleString()} Chicago buildings that have a city code-enforcement record. Yours may simply have no violation history yet — you can still add it and write the first review.</div><div style="margin-top:16px"><button class="btn primary" style="width:auto;display:inline-flex" onclick="prefillAddr='${esc((searchQ||'').replace(/'/g,''))}';go('write',null)">${IC.plus}Add “${esc(searchQ||'this address')}” &amp; review it</button></div></div>`}`;
@@ -1319,20 +1418,21 @@ function drawMap(mountId){const mount=$('#'+mountId);if(!mount||!CHI.hoods||!CHI
 /* ============ BUILDING ============ */
 function viewBuilding(bid){const b=bById(bid);if(!b)return '<div class="empty">Building not found</div>';
   if(unitFilterFor!==bid){unitFilter='all';unitFilterFor=bid;}
+  if(bTabFor!==bid){bTab='overview';bTabFor=bid;}
   if(!b.demo){fetchExt(b);fetchViol(b);} // start live photo/rating + violation lookups ASAP
   const seed=hashStr(bid+b.name);const r=ratingOf(bid);const sc=scoreOf(b);const g=gradeOf(sc);const sa=subAvgOf(bid);const saved=S.saved.includes(bid);const inCmp=S.compare.includes(bid);
   const allR=reviewsFor(bid).slice().sort((a,c)=>(c.helpful||0)-(a.helpful||0));
   const dimsWith=REVIEW_DIMS.filter(d=>(sa[d.k]||0)>0);
-  const subHTML=(r.n&&dimsWith.length)?`<div class="card"><div class="card-h"><span class="t">📊 What tenants rate</span><span class="rating-pill">${r.avg.toFixed(1)} ${starsHTML(r.avg)}</span></div><div class="card-b"><div class="subscores">${dimsWith.map(d=>{const v=sa[d.k]||0;return `<div class="subrow"><span class="lab">${d.l}</span><span class="bar"><i style="width:${v/5*100}%"></i></span><span class="v">${v.toFixed(1)}</span></div>`;}).join('')}</div></div></div>`:'';
+  const subHTML=(r.n&&dimsWith.length)?`<div class="card"><div class="card-h"><span class="t">What tenants rate</span><span class="rating-pill">${r.avg.toFixed(1)} ${starsHTML(r.avg)}</span></div><div class="card-b"><div class="subscores">${dimsWith.map(d=>{const v=sa[d.k]||0;return `<div class="subrow"><span class="lab">${d.l}</span><span class="bar"><i style="width:${v/5*100}%"></i></span><span class="v">${v.toFixed(1)}</span></div>`;}).join('')}</div></div></div>`:'';
   // rent & fee history + unit insights
   const rentS=rentSummary(bid);
-  const rentCard=rentS?`<div class="card"><div class="card-h"><span class="t">💵 Rent &amp; fees</span><span class="small-note" style="color:var(--ink-faint)">${rentS.n} report${rentS.n===1?'':'s'}</span></div><div class="card-b">
+  const rentCard=rentS?`<div class="card"><div class="card-h"><span class="t">Rent &amp; fees</span><span class="small-note" style="color:var(--ink-faint)">${rentS.n} report${rentS.n===1?'':'s'}</span></div><div class="card-b">
     ${rentS.rows.map(row=>{const bl=(row.beds==='?'||row.beds==null)?'Rent reported':(row.beds==0?'Studio':row.beds+' bed'+(row.beds==1?'':'s'));return `<div class="drow"><span class="dl">${bl}</span><span class="dv" style="color:var(--heat-deep)">${row.min===row.max?'$'+row.min:'$'+row.min+'–$'+row.max}/mo</span></div>`;}).join('')}
     ${rentS.renewal!=null?`<div class="drow"><span class="dl">Typical renewal increase</span><span class="dv n${rentS.renewal>=8?2:rentS.renewal>=4?1:0}">+${rentS.renewal}%</span></div>`:''}
     ${rentS.fees.length?`<div class="rlto-note" style="border:none;padding-top:10px"><b>Common extra fees:</b> ${rentS.fees.join(' · ')}</div>`:''}
     <div class="src-note">Tenant-reported. Shown as ranges — individual submissions are never identified.</div></div></div>`:'';
   const ui=unitInsights(bid);
-  const unitCard=ui?`<div class="card"><div class="card-h"><span class="t">🏠 Unit insights</span><span class="small-note" style="color:var(--ink-faint)">${ui.n} report${ui.n===1?'':'s'}</span></div><div class="card-b">
+  const unitCard=ui?`<div class="card"><div class="card-h"><span class="t">Unit insights</span><span class="small-note" style="color:var(--ink-faint)">${ui.n} report${ui.n===1?'':'s'}</span></div><div class="card-b">
     ${ui.items.map(it=>`<div class="drow"><span class="dl">${it.icon} <b style="color:var(--ink)">${it.t}</b></span><span class="dv" style="font-family:var(--sans);font-weight:600;font-size:13px;text-align:right;max-width:60%">${esc(it.v)}</span></div>`).join('')}
     <div class="src-note">Aggregated from tenant reports without exposing any exact unit number.</div></div></div>`:'';
   // getting around: transit + parking + year
@@ -1341,21 +1441,21 @@ function viewBuilding(bid){const b=bById(bid);if(!b)return '<div class="empty">B
   const parkMode=modeOf(parkR);const parkMed=median(reviewsFor(bid).filter(r=>r.parking>0&&!r.ext).map(r=>r.parking));
   const yearR=reviewsFor(bid).filter(r=>r.yearBuilt>0&&!r.ext).map(r=>r.yearBuilt);
   const yearBuilt=b.demo?b.year:(yearR.length?modeOf(yearR):null);
-  const gettingAround=(tr||parkMode||yearBuilt)?`<div class="card"><div class="card-h"><span class="t">🧭 Getting around</span></div><div class="card-b">
+  const gettingAround=(tr||parkMode||yearBuilt)?`<div class="card"><div class="card-h"><span class="t">Getting around</span></div><div class="card-b">
     ${tr?`<div class="drow"><span class="dl">🚆 Nearest CTA 'L'</span><span class="dv" style="font-family:var(--sans);text-align:right"><span class="flag ${tr.tier}" style="display:inline-flex">${tr.min} min walk</span><div style="font-size:12px;color:var(--ink-soft);margin-top:4px;font-weight:600">${esc(tr.name)}${tr.lines.length?' · '+tr.lines.join('/')+' Line'+(tr.lines.length>1?'s':''):''}</div></span></div>`:''}
     <div class="drow"><span class="dl">🚗 Parking</span><span class="dv" style="font-family:var(--sans);font-weight:600;font-size:13px;text-align:right">${parkMode?esc(parkMode)+(parkMed?` · ~$${Math.round(parkMed)}/mo`:''):'<span style="color:var(--ink-faint)">Not reported</span>'}</span></div>
     <div class="drow"><span class="dl">🏗️ Year built</span><span class="dv">${yearBuilt||'<span style="color:var(--ink-faint);font-family:var(--sans);font-weight:600;font-size:13px">Not reported</span>'}</span></div>
     <div class="src-note">${tr?'Transit is measured to the nearest \'L\' station; walk time assumes ~3 mph. ':''}Parking &amp; year are tenant-reported.</div></div></div>`:'';
 
   let dataCard;const pct=percentileOf(b);
-  if(b.demo){const d=b.data;dataCard=`<div class="card"><div class="card-h"><span class="t">🏛️ City records (sample)</span>${flagHTML(b)}</div><div class="card-b">
+  if(b.demo){const d=b.data;dataCard=`<div class="card"><div class="card-h"><span class="t">City records (sample)</span>${flagHTML(b)}</div><div class="card-b">
     <div class="drow"><span class="dl">Open building violations</span><span class="dv n${d.viol===0?0:d.viol>=5?2:1}">${d.viol}</span></div>
     <div class="drow"><span class="dl">Eviction filings (12 mo)</span><span class="dv n${d.evict===0?0:d.evict>=2?2:1}">${d.evict}</span></div>
     <div class="drow"><span class="dl">Problem Landlord list</span><span class="dv n${d.problem?2:0}">${d.problem?'FLAGGED':'No'}</span></div>
     ${b.cats&&b.cats.length?`<div class="section-t" style="margin:16px 0 10px">Issue areas</div><div class="catbars">${b.cats.map(c=>`<div class="catrow"><span class="cl">${esc(c.d)}</span><span class="cb"><i style="width:${clampN(c.c/(b.cats[0].c)*100,8,100)}%"></i></span><span class="cv">${c.c}</span></div>`).join('')}</div>`:''}
     <div class="rlto-note"><b>Your RLTO rights:</b> Chicago requires 30–120 days written notice before a rent increase, security-deposit interest, and 24-hour notice before entry.</div>
     <div class="src-note">Sample data — illustrative only, not real City of Chicago records.</div></div></div>`;
-  }else{dataCard=`<div class="card"><div class="card-h"><span class="t">🏛️ City of Chicago records</span>${flagHTML(b)}</div><div class="card-b">
+  }else{dataCard=`<div class="card"><div class="card-h"><span class="t">City of Chicago records</span>${flagHTML(b)}</div><div class="card-b">
     <div class="drow"><span class="dl">Open building violations</span><span class="dv n${b.open===0?0:b.open>=10?2:1}">${b.open}</span></div>
     <div class="drow"><span class="dl">Violations resolved (since '24)</span><span class="dv n0">${b.fixed}</span></div>
     <div class="drow"><span class="dl">Most recent violation</span><span class="dv" style="font-size:12px">${fmtDate(b.last)}</span></div>
@@ -1375,7 +1475,7 @@ function viewBuilding(bid){const b=bById(bid);if(!b)return '<div class="empty">B
   }
   // Q&A
   const qas=qaFor(bid);
-  const qaBlock=`<div class="card"><div class="card-h"><span class="t">💬 Neighbor Q&amp;A (${qas.length})</span></div><div class="card-b">
+  const qaBlock=`<div class="card"><div class="card-h"><span class="t">Neighbor Q&amp;A (${qas.length})</span></div><div class="card-b">
     ${qas.length?qas.map(qaHTML).join(''):`<p class="small-note" style="padding:6px 0">No questions yet. Ask anything about this building — heat, management, parking, deposits.</p>`}
     <div class="qa-form" style="margin-top:14px"><input id="qa-new-${bid}" placeholder="Ask a question…" onkeydown="if(event.key==='Enter')askQuestion('${bid}')"><button class="btn primary sm" onclick="askQuestion('${bid}')">Ask</button></div>
   </div></div>`;
@@ -1387,13 +1487,13 @@ function viewBuilding(bid){const b=bById(bid);if(!b)return '<div class="empty">B
   const nExt=extPhotos(bid).length;
   const galNote=nExt?`<div class="src-note" style="margin-top:10px">Street View &amp; Google listing photos of the building. Tenant photos of the lobby, a unit, or a problem help even more — add yours.</div>`:'';
   const galSv=(!photos.length&&!b.demo&&svPhoto(b))?`<div class="g"><img src="${svPhoto(b)}" alt="Street View" loading="lazy" onerror="this.parentNode.style.display='none'"><span class="tag">STREET VIEW</span></div>`:'';
-  const gallery=`<div class="card"><div class="card-h"><span class="t">📷 Photos${photos.length?' ('+photos.length+')':''}</span><button class="btn ghost sm" style="width:auto;display:inline-flex" onclick="addBuildingPhotos('${bid}')">${IC.plus}Add photos</button></div><div class="card-b"><div class="gallery">${galUser||galSample||galSv||'<p class="small-note" style="padding:6px 0">No photos yet. Real photos of the lobby, unit, or a problem help renters more than anything — add the first.</p>'}</div>${galNote}</div></div>`;
+  const gallery=`<div class="card"><div class="card-h"><span class="t">Photos${photos.length?' ('+photos.length+')':''}</span><button class="btn ghost sm" style="width:auto;display:inline-flex" onclick="addBuildingPhotos('${bid}')">${IC.plus}Add photos</button></div><div class="card-b"><div class="gallery">${galUser||galSample||galSv||'<p class="small-note" style="padding:6px 0">No photos yet. Real photos of the lobby, unit, or a problem help renters more than anything — add the first.</p>'}</div>${galNote}</div></div>`;
 
   // maintenance issues (the heat)
   const openI=openIssuesFor(bid);const maxD=openI.length?daysOpen(openI[0].date):0;
   const resolvedI=issuesFor(bid).filter(i=>i.status==='resolved');
   const hotstrip=openI.length?`<div class="hotstrip"><span class="fire">🔥</span><span><b>${openI.length} open maintenance issue${openI.length>1?'s':''}</b> — the longest has gone <b>${maxD} day${maxD===1?'':'s'}</b> unfixed.</span><button class="go" onclick="go('issue','${bid}')">Report one</button></div>`:'';
-  const issuesCard=`<div class="card"><div class="card-h"><span class="t">🔧 Maintenance issues (${openI.length} open)</span><button class="btn primary sm" style="width:auto;display:inline-flex" onclick="go('issue','${bid}')">${IC.plus}Report</button></div><div class="card-b">
+  const issuesCard=`<div class="card"><div class="card-h"><span class="t">Maintenance issues (${openI.length} open)</span><button class="btn primary sm" style="width:auto;display:inline-flex" onclick="go('issue','${bid}')">${IC.plus}Report</button></div><div class="card-b">
     ${openI.length?openI.map(issueHTML).join(''):'<p class="small-note" style="padding:6px 0">No open issues logged. If something in your unit or building is broken and the landlord won\'t fix it, log it here — the day counter starts publicly and doesn\'t stop until it\'s resolved.</p>'}
     ${resolvedI.length?`<details class="res-wrap"><summary>✓ ${resolvedI.length} resolved issue${resolvedI.length>1?'s':''}</summary>${resolvedI.map(issueHTML).join('')}</details>`:''}
   </div></div>`;
@@ -1403,24 +1503,18 @@ function viewBuilding(bid){const b=bById(bid);if(!b)return '<div class="empty">B
   const dn=nameOf(b);const custom=hasCustomName(b);
   const webName=custom?dn:(b.addr||dn);
 
+  const ptab=(k,label)=>`<button class="ptab ${bTab===k?'on':''}" onclick="setBTab('${k}')">${label}</button>`;
+  const shortCard=`<div class="sec"><p class="summary-txt" style="margin:0;font-size:15px;line-height:1.62;color:var(--ink-soft)">${summaryOf(b)}</p></div>`;
+  const rentTab=(rentCard||unitCard)?(rentCard+unitCard):`<div class="sec"><div class="empty" style="padding:26px"><div class="em">\ud83d\udcb5</div><div class="t">No rent or fee reports yet</div><div class="d">Rent, renewal increases, move-in fees and parking come from tenant reviews. Add yours to start the history.</div><div style="margin-top:14px"><button class="btn primary" style="width:auto;display:inline-flex" onclick="go('write','${bid}')">Add your rent &amp; review</button></div></div></div>`;
+  const mgmtTab=aroundWebCard(webName,false,b.demo?null:extWebsite(bid))+(showPort?`<div class="sec"><div class="card-h"><span class="t">${b.demo?'Managed by':'Property group'}</span></div><div style="font-weight:700;margin:2px 0 4px;font-size:1.05rem">${esc(port.name)}</div><div class="small-note">${port.buildings.length} building${port.buildings.length===1?'':'s'} the City clusters under shared ownership/management.</div><button class="btn outline sm" style="margin-top:12px;width:auto;display:inline-flex" onclick="go('landlord','${b.id}')">View all ${port.buildings.length} \u2192</button></div>`:'')+((!b.demo)?neighborhoodWebCard(b.hood):'')+`<div class="sec">${signupBox('building')}</div>`;
+  const tabs={overview:hotstrip+shortCard+gettingAround+gallery, reviews:unitMenuCard(bid)+subHTML+reviewsSection(b)+qaBlock, records:dataCard+violationsCard(b)+issuesCard, rent:rentTab, mgmt:mgmtTab};
+  const tabContent=tabs[bTab]||tabs.overview;
   return `<div class="bprofile">
     <div>
       <div class="hero ${heroPhoto?'hasimg':''}" style="${gradOf(seed)}">${heroPhoto?`<img class="cover-img" src="${heroPhoto}" alt="" onerror="this.style.display='none'">`:`<span class="hero-emoji">${emoOf(seed)}</span>`}<div class="grad"></div><div class="htext"><div class="name">${esc(dn)}</div><div class="addr">${esc(custom?b.addr:(b.demo?b.addr:b.hood))}</div></div></div>
-      ${hotstrip}
-      <div class="card" style="margin-top:16px"><div class="card-h"><span class="t">📋 The short version</span></div><div class="card-b"><p class="summary-txt" style="margin:0">${summaryOf(b)}</p></div></div>
-      ${issuesCard}
-      ${dataCard}
-      ${violationsCard(b)}
-      ${gettingAround}
-      ${subHTML}
-      ${unitCard}
-      ${rentCard}
-      ${gallery}
-      ${reviewsSection(b)}
-      ${aroundWebCard(webName,false,b.demo?null:extWebsite(bid))}
-      ${(!b.demo)?neighborhoodWebCard(b.hood):''}
-      <div class="card"><div class="card-b">${signupBox('building')}</div></div>
-      ${qaBlock}
+      <div class="editorial">${esc(editorialOf(b))}</div>
+      <div class="ptabs">${ptab('overview','Overview')}${ptab('reviews','Reviews')}${ptab('records','City Records')}${ptab('rent','Rent & Fees')}${ptab('mgmt','Management')}</div>
+      <div>${tabContent}</div>
     </div>
     <div>
       <div class="rail-score">
@@ -1435,9 +1529,8 @@ function viewBuilding(bid){const b=bById(bid);if(!b)return '<div class="empty">B
           <button class="btn ghost full" onclick="window.print()">${IC.print}Print report</button>
         </div>
       </div>
-      ${unitMenuCard(bid)}
-      ${(()=>{const bd=scoreBreakdown(b);return `<div class="card"><div class="card-h"><span class="t">🧮 How the ${bd.final} breaks down</span></div><div class="card-b"><div class="brk">${bd.rows.map(row=>`<div class="brow"><div class="top"><span class="nm">${row.l} <span class="wt">${row.w}%</span></span><span class="val" style="color:${tierColor(gradeOf(row.v))}">${row.v}</span></div><div class="sub">${esc(row.sub)}</div><div class="track"><i style="width:${row.v}%;background:${tierColor(gradeOf(row.v))}"></i></div></div>`).join('')}<div class="brk-sum"><span style="font-weight:700;font-size:13px">Radiator Score</span><span class="lg" style="color:${tierColor(gradeOf(bd.final))}">${bd.final}<small style="font-size:12px;color:var(--ink-faint);font-weight:600">/100</small></span></div></div><div class="src-note" style="margin-top:12px">${bd.hasR?'City records are weighted 60%, verified tenant reviews 40%.':'Based on City of Chicago records alone — the first tenant review adds the reviews component.'}</div></div></div>`;})()}
-      ${showPort?`<div class="card"><div class="card-h"><span class="t">🏢 ${b.demo?'Managed by':'Property group'}</span></div><div class="card-b"><div style="font-weight:700;margin-bottom:4px">${esc(port.name)}</div><div class="small-note">${port.buildings.length} building${port.buildings.length===1?'':'s'} on record.</div><button class="btn outline full sm" style="margin-top:12px" onclick="go('landlord','${b.id}')">View all ${port.buildings.length} →</button></div></div>`:''}
+      ${(()=>{const bd=scoreBreakdown(b);return `<div class="card"><div class="card-h"><span class="t">How the ${bd.final} breaks down</span></div><div class="card-b"><div class="brk">${bd.rows.map(row=>`<div class="brow"><div class="top"><span class="nm">${row.l} <span class="wt">${row.w}%</span></span><span class="val" style="color:${tierColor(gradeOf(row.v))}">${row.v}</span></div><div class="sub">${esc(row.sub)}</div><div class="track"><i style="width:${row.v}%;background:${tierColor(gradeOf(row.v))}"></i></div></div>`).join('')}<div class="brk-sum"><span style="font-weight:700;font-size:13px">Radiator Score</span><span class="lg" style="color:${tierColor(gradeOf(bd.final))}">${bd.final}<small style="font-size:12px;color:var(--ink-faint);font-weight:600">/100</small></span></div></div><div class="src-note" style="margin-top:12px">${bd.hasR?'City records are weighted 60%, verified tenant reviews 40%.':'Based on City of Chicago records alone — the first tenant review adds the reviews component.'}</div></div></div>`;})()}
+      ${showPort?`<div class="card"><div class="card-h"><span class="t">${b.demo?'Managed by':'Property group'}</span></div><div class="card-b"><div style="font-weight:700;margin-bottom:4px">${esc(port.name)}</div><div class="small-note">${port.buildings.length} building${port.buildings.length===1?'':'s'} on record.</div><button class="btn outline full sm" style="margin-top:12px" onclick="go('landlord','${b.id}')">View all ${port.buildings.length} →</button></div></div>`:''}
       <div class="card"><div class="card-b"><div class="small-note">${esc(metaLine)}</div></div></div>
     </div>
   </div>`;
@@ -1479,6 +1572,18 @@ function addBuildingPhotos(bid){const inp=document.createElement('input');inp.ty
 function wallHTML(bid,locked){return `<div class="wall"><div class="blurred">${locked.slice(0,2).map(revHTML).join('')}</div><div class="cover"><div class="lock">🔒</div><h3><span class="locked-n">${locked.length}</span> more Radiator review${locked.length===1?'':'s'} locked</h3><p>Aggregated public reviews are free. Radiator's own verified reviews unlock when you post one — or grab a pass.</p><div class="btnrow"><button class="btn primary" onclick="go('write','${bid}')">Write a review</button><button class="btn ghost" onclick="openPaywall()">Get access · $9.99</button></div></div></div>`;}
 function connectPanel(){return `<div class="connect"><div class="ct">🔗 Bring in outside reviews</div><div class="small-note">Radiator aggregates public reviews &amp; discussions from other sources so every rating lives in one place. In the live product these connect through each service's official API (Google Places, Yelp Fusion, Reddit, etc.).</div><div class="cl">${['google','yelp','reddit','apartments','facebook'].map(s=>{const S2=SOURCES[s];return `<button onclick="toast('${S2.name} connects via its official API at launch (demo)')"><span class="srcbadge ${S2.cls}">${S2.name}</span> Connect</button>`;}).join('')}</div></div>`;}
 /* ===== per-unit view (filter by floor / size — never exact unit numbers, for privacy) ===== */
+let bTab='overview',bTabFor=null;
+function setBTab(t){bTab=t;render();}
+function editorialOf(b){const parts=[];
+  const tr=transitInfo(b);
+  if(tr){parts.push(tr.min<=8?'Excellent transit':tr.min<=15?'good transit':'a longer walk to the ‘L’');}
+  if(!b.demo&&b.cats&&b.cats.length){parts.push('recurring '+String(b.cats[0].d||'building').toLowerCase()+' complaints');}
+  else if(!b.demo){parts.push(b.open===0?'a clean City record':b.open>=10?'a heavy violation history':(b.open+' open violation'+(b.open===1?'':'s')));}
+  const r=ratingOf(b.id);
+  if(r.n){parts.push(r.avg>=4?'strong tenant reviews':r.avg>=3?'mixed tenant reviews':'rough tenant reviews');}
+  else{const ext=_extCache[b.id];if(ext&&!ext.error&&ext.combinedRating){parts.push(ext.combinedRating>=4?'well-rated online':ext.combinedRating>=3?'mixed online reviews':'low online ratings');}else{parts.push('no tenant reviews yet');}}
+  if(!parts.length)return summaryOf(b);
+  const str=parts.join(', ');return str.charAt(0).toUpperCase()+str.slice(1)+'.';}
 let unitFilter='all',unitFilterFor=null;
 function setUnitFilter(v){unitFilter=v;render();}
 function unitFacets(bid){const rs=reviewsFor(bid).filter(r=>!r.ext);
@@ -1494,7 +1599,7 @@ function unitMenuCard(bid){const uf=unitFacets(bid);const hasFacets=!!(uf.floors
     ${uf.beds.map(bd=>btn('beds:'+bd,bd==='0'?'Studio':esc(bd)+' bed')).join('')}
   </div><div class="src-note" style="margin-top:8px">Narrows reviews by floor or size. We don't track exact unit numbers — in a small building that could identify a tenant.</div>`
   :`<div class="recency" style="flex-wrap:wrap;gap:6px">${btn('all','All units')}</div><div class="src-note" style="margin-top:8px">Floor &amp; size filters appear here as reviews with unit info come in. We never track exact unit numbers — in a small building that could identify a tenant.</div>`;
-  return `<div class="card"><div class="card-h"><span class="t">🏠 View by unit</span></div><div class="card-b">${filters}</div></div>`;}
+  return `<div class="card"><div class="card-h"><span class="t">View by unit</span></div><div class="card-b">${filters}</div></div>`;}
 function reviewsSection(b){const bid=b.id;
   const ext=(!b.demo)?_extCache[bid]:null;
   if(!b.demo)fetchExt(b);
@@ -1525,7 +1630,7 @@ function reviewsSection(b){const bid=b.id;
   else if(filter==='all'){const exShown=list.filter(rv=>(rv.src||'radiator')!=='radiator');const rad=list.filter(rv=>(rv.src||'radiator')==='radiator');body=exShown.map(revHTML).join('')+(rad[0]?revHTML(rad[0]):'');if(rad.length>1)body+=wallHTML(bid,rad.slice(1));}
   else{const pv=list[0];const locked=list.slice(1);body=pv?revHTML(pv):'';if(locked.length)body+=wallHTML(bid,locked);}
   const foot=b.demo?'':(connected?`<div class="small-note" style="margin-top:14px">🟢 <b>Live</b> — Google &amp; Yelp pulled via API${ext.cached?' (cached)':''}. Excerpt counts are capped by each service's API; the combined rating reflects their full review volumes.</div>`:connectPanel());
-  return `<div class="card"><div class="card-h"><span class="t">💬 Reviews from everywhere (${all.length})</span>${combined>0?`<span class="rating-pill">${combined.toFixed(1)} ${starsHTML(combined)}</span>`:''}</div><div class="card-b">
+  return `<div class="card"><div class="card-h"><span class="t">Reviews from everywhere (${all.length})</span>${combined>0?`<span class="rating-pill">${combined.toFixed(1)} ${starsHTML(combined)}</span>`:''}</div><div class="card-b">
     ${(all.length||connected)?`<div class="small-note" style="margin-bottom:10px">Combined rating from star sources across ${srcN} source${srcN===1?'':'s'} — reviews &amp; Reddit discussions, all in one place.</div>`:''}
     ${summary}${recChips}${chips}
     ${uf!=='all'?`<div class="pctbadge" style="margin:8px 0">🏠 Showing <b style="margin:0 2px">${uf.indexOf('floor:')===0?esc(uf.slice(6)):(uf.slice(5)==='0'?'studio':esc(uf.slice(5))+'-bed')}</b> reviews · <a onclick="setUnitFilter('all')" style="cursor:pointer;text-decoration:underline">show all units</a></div>`:''}
@@ -1556,9 +1661,9 @@ function viewLandlord(bid){const b=bById(bid);if(!b)return '<div class="empty">N
   // common issue areas across the whole portfolio
   const catAgg={};bs.forEach(x=>(x.cats||[]).forEach(c=>{catAgg[c.d]=(catAgg[c.d]||0)+(c.c||0);}));
   const topCats=Object.entries(catAgg).sort((a,c)=>c[1]-a[1]).slice(0,4);
-  const catCard=topCats.length?`<div class="card"><div class="card-h"><span class="t">🧩 What breaks across their buildings</span></div><div class="card-b"><div class="catbars">${topCats.map(([d,c])=>`<div class="catrow"><span class="cl">${esc(d)}</span><span class="cb"><i style="width:${clampN(c/(topCats[0][1])*100,8,100)}%"></i></span><span class="cv">${c}</span></div>`).join('')}</div><div class="src-note" style="margin-top:10px">Open-violation categories summed across all ${bs.length} buildings in this portfolio.</div></div></div>`:'';
+  const catCard=topCats.length?`<div class="card"><div class="card-h"><span class="t">What breaks across their buildings</span></div><div class="card-b"><div class="catbars">${topCats.map(([d,c])=>`<div class="catrow"><span class="cl">${esc(d)}</span><span class="cb"><i style="width:${clampN(c/(topCats[0][1])*100,8,100)}%"></i></span><span class="cv">${c}</span></div>`).join('')}</div><div class="src-note" style="margin-top:10px">Open-violation categories summed across all ${bs.length} buildings in this portfolio.</div></div></div>`:'';
   const webBlock = mgr ? aroundWebCard(mgr,true)
-    : (canName?`<div class="card"><div class="card-h"><span class="t">🌐 Around the web</span></div><div class="card-b"><p class="small-note" style="margin:0 0 12px">Know who runs these buildings? Name the management company and Radiator will let anyone look them up across Reddit, Google &amp; Yelp — company reputation, not just one address.</p><button class="btn primary" style="width:auto;display:inline-flex" onclick="nameManager('${bid}')">${IC.plus}Name this management company</button></div></div>`:'');
+    : (canName?`<div class="card"><div class="card-h"><span class="t">Around the web</span></div><div class="card-b"><p class="small-note" style="margin:0 0 12px">Know who runs these buildings? Name the management company and Radiator will let anyone look them up across Reddit, Google &amp; Yelp — company reputation, not just one address.</p><button class="btn primary" style="width:auto;display:inline-flex" onclick="nameManager('${bid}')">${IC.plus}Name this management company</button></div></div>`:'');
   return `<div class="acct-hero"><div class="av" style="background:var(--azure)">🏢</div><div><div class="h">${esc(title)}</div><div class="s">${bs.length} building${bs.length===1?'':'s'} in records · <span class="flag ${RISK_CLASS[worst]}" style="display:inline-flex"><span class="dot"></span>${RISK_LABEL[worst]}</span>${mgr&&canName?` · <a onclick="nameManager('${bid}')" style="cursor:pointer">✎ edit name</a>`:''}</div></div></div>
   <div class="statgrid" style="margin-top:16px"><div class="statbox"><div class="n">${avg?avg.toFixed(1):'—'}</div><div class="k">Avg rating</div></div><div class="statbox"><div class="n">${totOpen}</div><div class="k">Open viol.</div></div><div class="statbox"><div class="n">${b.demo?bs.reduce((a,x)=>a+x.data.evict,0):totFixed}</div><div class="k">${b.demo?'Evictions':'Resolved'}</div></div></div>
   ${webBlock}
@@ -1595,11 +1700,11 @@ function viewDirectory(){
   let list;
   if(isCo){
     const firms=SEED_COMPANIES.map(f=>({type:'firm',id:f.id,name:f.name,kind:f.kind,buildings:firmBuildings(f.name)})).sort((a,b)=>b.buildings.length-a.buildings.length||a.name.localeCompare(b.name));
-    const firmsGrid=`<div class="section-t" style="margin:2px 0 10px">🏢 Property-management companies (${firms.length})</div><div class="bgrid">${firms.map(companyCard).join('')}</div><p class="small-note" style="margin:12px 0 26px">Reputation profiles for major Chicago landlords &amp; managers — search any by name (e.g. Fulton Grace), see what renters and the web say, and tag your building to one.</p>`;
+    const firmsGrid=`<div class="section-t" style="margin:2px 0 10px">Property-management companies (${firms.length})</div><div class="bgrid">${firms.map(companyCard).join('')}</div><p class="small-note" style="margin:12px 0 26px">Reputation profiles for major Chicago landlords &amp; managers — search any by name (e.g. Fulton Grace), see what renters and the web say, and tag your building to one.</p>`;
     let rows=portfoliosRanked().slice();
     const cmp={violations:(a,b)=>b.open-a.open,clean:(a,b)=>a.open-b.open,size:(a,b)=>b.count-a.count,rating:(a,b)=>b.avg-a.avg||b.rn-a.rn,lowrating:(a,b)=>(a.rn?a.avg:99)-(b.rn?b.avg:99)}[dirSort]||((a,b)=>b.open-a.open);
     rows.sort(cmp);rows=rows.slice(0,50);
-    list=firmsGrid+`<div class="section-t" style="margin:0 0 10px">🗂️ City property portfolios (${portfoliosRanked().length.toLocaleString()})</div><p class="small-note" style="margin:0 0 12px">Groups of 2+ buildings the City clusters under shared ownership. Violation counts reflect building conditions and city enforcement — not the neighborhood or the people who live there.</p>
+    list=firmsGrid+`<div class="section-t" style="margin:0 0 10px">City property portfolios (${portfoliosRanked().length.toLocaleString()})</div><p class="small-note" style="margin:0 0 12px">Groups of 2+ buildings the City clusters under shared ownership. Violation counts reflect building conditions and city enforcement — not the neighborhood or the people who live there.</p>
     <div style="display:grid;gap:12px">${rows.map((r,i)=>`<button class="card" style="border:none;text-align:left;cursor:pointer;width:100%;padding:0" onclick="go('landlord','${r.bid}')"><div class="card-b" style="display:flex;align-items:center;gap:14px">
       <div style="font-family:var(--mono);font-size:18px;font-weight:800;color:var(--ink-faint);min-width:30px">#${i+1}</div>
       <div style="width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,#4C6FA5,#33507E);display:flex;align-items:center;justify-content:center;font-size:22px;flex:none">🏢</div>
@@ -1613,8 +1718,8 @@ function viewDirectory(){
     bs.sort(cmp);bs=bs.slice(0,60);
     list=`<div class="result-meta"><span class="count">Top 60 of ${REAL.length.toLocaleString()} buildings · ${dirSortLabel(dirSort)}</span></div><div class="bgrid">${bs.map(bcard).join('')}</div>`;
   }
-  return `<h1 class="page-t">🏆 Rankings</h1><p class="page-sub">Browse Chicago landlords and buildings, ranked. Compare management companies and apartment buildings by violations, cleanliness, and tenant ratings.</p>
-  <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">${tabBtn('companies','🏢 Management companies')}${tabBtn('buildings','🏬 Apartment buildings')}</div>
+  return `<h1 class="page-t">Rankings</h1><p class="page-sub">Browse Chicago landlords and buildings, ranked. Compare management companies and apartment buildings by violations, cleanliness, and tenant ratings.</p>
+  <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">${tabBtn('companies','Management companies')}${tabBtn('buildings','Apartment buildings')}</div>
   <div class="filterbar" style="margin-bottom:16px">${sortSel}</div>
   ${list}
   ${siteFooter()}`;
@@ -1663,7 +1768,7 @@ function viewNeighborhood(name){const h=HOOD_STATS.find(x=>x.hood===name);const 
 function viewTools(){
   return `<h1 class="page-t">Chicago RLTO tools</h1><p class="page-sub">Free tenant tools built around Chicago's Residential Landlord &amp; Tenant Ordinance — the kind of thing no other rental-review app offers.</p>
   <div class="toolgrid">
-    <div class="card"><div class="card-h"><span class="t">💰 Security deposit interest</span></div><div class="card-b">
+    <div class="card"><div class="card-h"><span class="t">Security deposit interest</span></div><div class="card-b">
       <p class="small-note" style="margin-bottom:14px">Chicago landlords who hold a security deposit must pay tenants annual interest at a rate the City sets each year. Estimate what you're owed.</p>
       <div class="field"><label>Deposit amount ($)</label><input type="number" id="dep-amt" value="1800" inputmode="numeric" oninput="calcDeposit()"></div>
       <div class="grid2"><div class="field"><label>Months held</label><input type="number" id="dep-mo" value="12" inputmode="numeric" oninput="calcDeposit()"></div>
@@ -1671,14 +1776,14 @@ function viewTools(){
       <div class="calc-out"><div class="big" id="dep-out">$0.02</div><div class="lbl">estimated interest owed</div></div>
       <p class="small-note" style="margin-top:10px">The City sets the official rate annually (recent rates have been near 0.01%). Verify the current rate before relying on this.</p>
     </div></div>
-    <div class="card"><div class="card-h"><span class="t">📅 Rent-increase notice checker</span></div><div class="card-b">
+    <div class="card"><div class="card-h"><span class="t">Rent-increase notice checker</span></div><div class="card-b">
       <p class="small-note" style="margin-bottom:14px">Under Chicago's Fair Notice Ordinance, the longer you've lived somewhere, the more written notice a landlord must give before raising rent or not renewing.</p>
       <div class="field"><label>How long have you lived here?</label><select id="ni-ten" onchange="calcNotice()"><option value="30">Less than 6 months</option><option value="60" selected>6 months to 3 years</option><option value="120">3 years or more</option></select></div>
       <div class="field"><label>Date landlord gave notice (optional)</label><input type="date" id="ni-date" onchange="calcNotice()"></div>
       <div class="notice-out" id="ni-out"></div>
     </div></div>
   </div>
-  <div class="card" style="margin-top:16px"><div class="card-h"><span class="t">📖 Know your rights</span></div><div class="card-b"><p class="small-note" style="margin-bottom:12px">A plain-English rundown of the core RLTO protections most Chicago renters are covered by.</p><button class="btn outline" style="width:auto;display:inline-flex" onclick="go('guide',null)">Open the tenant-rights guide →</button></div></div>
+  <div class="card" style="margin-top:16px"><div class="card-h"><span class="t">Know your rights</span></div><div class="card-b"><p class="small-note" style="margin-bottom:12px">A plain-English rundown of the core RLTO protections most Chicago renters are covered by.</p><button class="btn outline" style="width:auto;display:inline-flex" onclick="go('guide',null)">Open the tenant-rights guide →</button></div></div>
   <p class="small-note" style="margin-top:18px">These tools are educational estimates, not legal advice. For a dispute, contact the City of Chicago or a tenants' rights organization.</p>`;
 }
 function calcDeposit(){const amt=parseFloat($('#dep-amt').value)||0;const mo=parseFloat($('#dep-mo').value)||0;const rate=parseFloat($('#dep-rate').value)||0;
