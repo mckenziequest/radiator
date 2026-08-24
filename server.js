@@ -80,7 +80,8 @@ app.get('/api/debug/google', async (req, res) => {
       error_message: json.error_message || null,
       resultCount: results.length,
       first5: results.slice(0, 5).map(r => ({
-        name: r.name, rating: r.rating, user_ratings_total: r.user_ratings_total, types: (r.types || []).slice(0, 3),
+        name: r.name, rating: r.rating, user_ratings_total: r.user_ratings_total,
+        formatted_address: r.formatted_address, types: (r.types || []).slice(0, 3),
       })),
     });
   } catch (e) {
