@@ -23,6 +23,7 @@ const { combine } = require('./aggregate');
 const store = require('./store');
 const community = require('./community');
 const seo = require('./seo');
+const payments = require('./payments');
 
 const app = express();
 app.use(compression()); // gzip every response — cuts the ~1MB app page to a fraction over the wire
@@ -106,6 +107,9 @@ app.get('/api/building', async (req, res) => {
 
 // ---- shared community content (reviews, issues, Q&A, names, photos) ----
 community.mount(app);
+
+// ---- Stripe payments (dormant until STRIPE_SECRET_KEY is set) ----
+payments.mount(app);
 
 // ---- serve the Radiator web app itself, so ONE deploy runs everything ----
 const PUBLIC = path.join(__dirname, 'public');
