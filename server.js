@@ -105,7 +105,9 @@ community.mount(app);
 
 // ---- serve the Radiator web app itself, so ONE deploy runs everything ----
 const PUBLIC = path.join(__dirname, 'public');
-app.use(express.static(PUBLIC, { maxAge: '1h', extensions: ['html'] }));
+// No long-lived HTML cache: the app is one file that gets redeployed, so browsers
+// must revalidate (cheap 304s via etag) and pick up new versions immediately.
+app.use(express.static(PUBLIC, { maxAge: 0, etag: true, extensions: ['html'] }));
 app.get('*', (req, res, next) => {
   if (req.path.startsWith('/api/')) return next();
   res.sendFile(path.join(PUBLIC, 'index.html'), err => { if (err) next(); });
