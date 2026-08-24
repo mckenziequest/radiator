@@ -14,6 +14,7 @@
 
 const express = require('express');
 const path = require('path');
+const compression = require('compression');
 const { getGoogle } = require('./providers/google');
 const { getYelp } = require('./providers/yelp');
 const { getReddit } = require('./providers/reddit');
@@ -22,6 +23,7 @@ const store = require('./store');
 const community = require('./community');
 
 const app = express();
+app.use(compression()); // gzip every response — cuts the ~1MB app page to a fraction over the wire
 app.use(express.json({ limit: '12mb' })); // room for base64 photos
 const PORT = process.env.PORT || 8787;
 const TTL_MS = (Number(process.env.CACHE_HOURS) || 12) * 3600 * 1000;
