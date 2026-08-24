@@ -96,12 +96,132 @@ app.get('/api/building', async (req, res) => {
     if (external.yelp) sources.push(external.yelp);
     if (external.reddit) sources.push(external.reddit);
 
+    // Photos: a Street View of the actual building (guaranteed for almost every
+    // address) plus any Google listing photos — all proxied so the key stays
+    // server-side. Computed once and cached alongside the ratings.
+    if (external.photos === undefined) {
+      external.photos = await buildPhotos(address, external.google);
+      cacheSet(cacheKey, external);
+    }
+
     const result = combine(address, sources);
+    result.photos = external.photos || [];
     result.cached = !!cached;
     res.json(result);
   } catch (err) {
     console.error('aggregate error:', err);
     res.status(502).json({ error: 'aggregation failed', detail: String(err && err.message || err) });
+  }
+});
+
+// ============================================================================
+// Photos — Street View of the building + Google listing photos, proxied so the
+// Google API key is NEVER sent to the browser.
+// ============================================================================
+const GKEY = process.env.GOOGLE_PLACES_KEY;
+
+// Build the ordered list of photo URLs for an address (relative /api paths).
+async function buildPhotos(address, google) {
+  const out = [];
+  // 1) Street View of the exact building — real, recognizable, near-universal.
+  if (GKEY) {
+    try {
+      const loc = `${String(address).split(',')[0]}, Chicago, IL`;
+      const metaUrl =
+        'https://maps.googleapis.com/maps/api/streetview/metadata?size=800x450&location=' +
+        encodeURIComponent(loc) + '&key=' + GKEY;
+      const meta = await (await fetch(metaUrl)).json();
+      if (meta && meta.status === 'OK') {
+        out.push('/api/streetview?address=' + encodeURIComponent(address));
+      }
+    } catch (e) { /* street view optional */ }
+  }
+  // 2) Google listing photos (interiors, amenities, exteriors uploaded by users).
+  const refs = (google && google.photoRefs) || [];
+  for (const ref of refs.slice(0, 5)) {
+    out.push('/api/photo?ref=' + encodeURIComponent(ref));
+  }
+  return out;
+}
+
+// Proxy a single Google Place photo by reference. Streams the image; the key
+// is applied here, server-side, and never reaches the client.
+app.get('/api/photo', async (req, res) => {
+  const ref = (req.query.ref || '').toString();
+  if (!GKEY || !ref) return res.status(404).end();
+  try {
+    const url =
+      'https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=' +
+      encodeURIComponent(ref) + '&key=' + GKEY;
+    const r = await fetch(url); // follows the 302 to the actual image
+    if (!r.ok) return res.status(502).end();
+    res.set('Content-Type', r.headers.get('content-type') || 'image/jpeg');
+    res.set('Cache-Control', 'public, max-age=604800'); // 7 days
+    const buf = Buffer.from(await r.arrayBuffer());
+    res.end(buf);
+  } catch (e) { res.status(502).end(); }
+});
+
+// Proxy a Street View Static image for an address. Same key-hiding pattern.
+app.get('/api/streetview', async (req, res) => {
+  const address = (req.query.address || '').toString().trim();
+  if (!GKEY || !address) return res.status(404).end();
+  try {
+    const loc = `${address.split(',')[0]}, Chicago, IL`;
+    const url =
+      'https://maps.googleapis.com/maps/api/streetview?size=800x450&location=' +
+      encodeURIComponent(loc) + '&fov=80&key=' + GKEY;
+    const r = await fetch(url);
+    if (!r.ok) return res.status(502).end();
+    res.set('Content-Type', r.headers.get('content-type') || 'image/jpeg');
+    res.set('Cache-Control', 'public, max-age=604800');
+    const buf = Buffer.from(await r.arrayBuffer());
+    res.end(buf);
+  } catch (e) { res.status(502).end(); }
+});
+
+// ============================================================================
+// Past violations — real City of Chicago building-violation records for an
+// address, from the open-data portal (dataset 22u3-xenr). Cached 12h.
+// ============================================================================
+const violCache = new Map();
+app.get('/api/violations', async (req, res) => {
+  const address = (req.query.address || '').toString().trim();
+  if (!address) return res.status(400).json({ error: 'address required' });
+  const key = address.toLowerCase();
+  const hit = violCache.get(key);
+  if (hit && Date.now() - hit.t < TTL_MS) return res.json(hit.v);
+
+  // Parse "540 N STATE St" -> number 540, name STATE (dataset stores name w/o type/dir).
+  const m = address.match(/^\s*(\d+)\s+([NSEW])?\s*(.+?)\s*$/i);
+  if (!m) return res.json({ violations: [], count: 0 });
+  const num = m[1];
+  // strip a leading direction + trailing street-type words for a forgiving match
+  let core = m[3].replace(/\b(st|street|ave|avenue|blvd|boulevard|dr|drive|rd|road|ct|court|pl|place|ln|lane|ter|terrace|pkwy|parkway|way|sq|square)\b\.?/gi, '').trim();
+  const nameLike = core.split(/\s+/)[0] || core; // first token of the street name
+  try {
+    const soql =
+      "$where=" + encodeURIComponent(`street_number='${num}' AND upper(street_name) like upper('${nameLike.replace(/'/g, "''")}%')`) +
+      "&$order=" + encodeURIComponent('violation_date DESC') +
+      "&$limit=60";
+    const url = 'https://data.cityofchicago.org/resource/22u3-xenr.json?' + soql;
+    const rows = await (await fetch(url, { headers: { 'Accept': 'application/json' } })).json();
+    const list = (Array.isArray(rows) ? rows : []).map((r) => ({
+      date: (r.violation_date || '').slice(0, 10),
+      status: r.violation_status || 'OPEN',
+      statusDate: (r.violation_status_date || '').slice(0, 10) || null,
+      code: r.violation_code || null,
+      desc: r.violation_description || r.violation_ordinance || 'Building code violation',
+      detail: r.violation_inspector_comments || r.violation_ordinance || '',
+      dept: r.department_bureau || null,
+    }));
+    const open = list.filter((v) => !/COMPLIED|NO ENTRY|CLOSED/i.test(v.status)).length;
+    const out = { address, count: list.length, open, resolved: list.length - open, violations: list };
+    violCache.set(key, { t: Date.now(), v: out });
+    res.json(out);
+  } catch (e) {
+    console.error('violations fetch failed:', e.message);
+    res.json({ violations: [], count: 0, error: 'lookup failed' });
   }
 });
 

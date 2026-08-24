@@ -127,12 +127,16 @@ function mount(app) {
     catch (e) { console.error(e); res.status(500).json({ error: 'save failed' }); }
   });
 
-  // Name a building
+  // Name a MANAGEMENT COMPANY (keyed by property group, e.g. "pg651637").
+  // Building names are fixed (seeded) and cannot be changed by anyone — only
+  // property-group / management-company keys are accepted here.
   app.post('/api/names', async (req, res) => {
     if (guard(req, res)) return;
     const b = req.body || {};
-    if (!bid(b.b) || !clean(b.name)) return res.status(400).json({ error: 'A building and a name are required.' });
-    try { const it = await store.setName(bid(b.b), clean(b.name, 80), clean(b.by, 40)); res.json({ ok: true, item: it }); }
+    const key = bid(b.b);
+    if (!/^pg\w+/.test(key)) return res.status(403).json({ error: 'Building names are fixed and cannot be renamed.' });
+    if (!clean(b.name)) return res.status(400).json({ error: 'A company name is required.' });
+    try { const it = await store.setName(key, clean(b.name, 80), clean(b.by, 40)); res.json({ ok: true, item: it }); }
     catch (e) { console.error(e); res.status(500).json({ error: 'save failed' }); }
   });
 
