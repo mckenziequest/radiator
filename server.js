@@ -111,8 +111,14 @@ app.get('*', (req, res, next) => {
   res.sendFile(path.join(PUBLIC, 'index.html'), err => { if (err) next(); });
 });
 
+// Always start serving — the app (city records, the site, local fallback) must
+// stay up even if the shared database is briefly unreachable. The community
+// store initializes in the background; if it fails, those routes degrade
+// gracefully (the frontend falls back to per-device data) instead of the whole
+// site going down.
+app.listen(PORT, () => {
+  console.log(`Radiator app + API on :${PORT}  (mock=${process.env.MOCK === '1'}, store=${store.HAS_PG ? 'postgres' : 'json-file'})`);
+});
 store.init()
-  .then(() => app.listen(PORT, () => {
-    console.log(`Radiator app + API on :${PORT}  (mock=${process.env.MOCK === '1'}, store=${store.HAS_PG ? 'postgres' : 'json-file'})`);
-  }))
-  .catch(e => { console.error('store init failed:', e); process.exit(1); });
+  .then(() => console.log('Shared community store ready.'))
+  .catch(e => console.error('Store init failed — community features degraded until the database is reachable:', e.message));
