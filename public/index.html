@@ -22,7 +22,7 @@
   --heat:#F26B3A; --heat-deep:#C24634; --heat-soft:#FBE3D6; --brand2:#F59E2E;
   --brand-grad:linear-gradient(150deg,#F59E2E,#F26B3A 55%,#E0574A);
   --azure:#3B6FA0; --azure-deep:#2E587F; --azure-soft:#EAF0F6;
-  --paper:#FFF8F2; --surface:#FFFFFF; --surface-2:#F3E7DC; --surface-3:#EDE4DA;
+  --paper:#FFF8F2; --surface:#FFFFFF; --surface-2:#F3E7DC; --surface-3:#EDE4DA; --dial-track:rgba(60,30,15,0.08);
   --ink:#2A2320; --ink-soft:#6F645B; --ink-faint:#A08B7D;
   --line:rgba(60,30,15,0.10); --line-strong:rgba(60,30,15,0.17);
   --good:#2F7D58; --good-soft:#EEF6F0;
@@ -40,7 +40,7 @@
 :root:not([data-theme="light"]){ @media (prefers-color-scheme:dark){
   --heat:#F26B3A; --heat-deep:#F0895A; --heat-soft:rgba(242,107,58,0.18);
   --azure:#6BA8E0; --azure-deep:#8FC0EC; --azure-soft:rgba(107,168,224,0.16);
-  --paper:#211B18; --surface:#2C2521; --surface-2:#332A25; --surface-3:#3C322C;
+  --paper:#211B18; --surface:#2C2521; --surface-2:#332A25; --surface-3:#3C322C; --dial-track:rgba(255,255,255,0.09);
   --ink:#F5EDE6; --ink-soft:#B7A99E; --ink-faint:#9A8B80;
   --line:rgba(255,255,255,0.08); --line-strong:rgba(255,255,255,0.15);
   --good:#6FD3A0; --good-soft:rgba(55,148,106,0.20); --watch:#F5C956; --watch-soft:rgba(224,163,46,0.20); --risk:#F0897C; --risk-soft:rgba(224,87,74,0.20);
@@ -49,7 +49,7 @@
 :root[data-theme="dark"]{
   --heat:#F26B3A; --heat-deep:#F0895A; --heat-soft:rgba(242,107,58,0.18);
   --azure:#6BA8E0; --azure-deep:#8FC0EC; --azure-soft:rgba(107,168,224,0.16);
-  --paper:#211B18; --surface:#2C2521; --surface-2:#332A25; --surface-3:#3C322C;
+  --paper:#211B18; --surface:#2C2521; --surface-2:#332A25; --surface-3:#3C322C; --dial-track:rgba(255,255,255,0.09);
   --ink:#F5EDE6; --ink-soft:#B7A99E; --ink-faint:#9A8B80;
   --line:rgba(255,255,255,0.08); --line-strong:rgba(255,255,255,0.15);
   --good:#6FD3A0; --good-soft:rgba(55,148,106,0.20); --watch:#F5C956; --watch-soft:rgba(224,163,46,0.20); --risk:#F0897C; --risk-soft:rgba(224,87,74,0.20);
@@ -240,12 +240,45 @@ h1.page-t{font-size:1.65rem; font-weight:900; letter-spacing:-.02em; margin:2px 
 /* right rail */
 .rail-score{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); box-shadow:var(--shadow-sm); padding:20px; text-align:center}
 .rail-score .grade{width:76px; height:76px; margin:0 auto 10px; border-radius:20px; display:grid; place-items:center; font-size:2.3rem; font-weight:900; color:#fff}
-.dial{width:104px; height:104px; margin:0 auto 12px; border-radius:50%; display:grid; place-items:center;
-  background:conic-gradient(from 180deg, var(--tier,#F26B3A) var(--sweep,0deg), var(--surface-3) 0);}
-.dial .dial-in{width:80px; height:80px; border-radius:50%; background:var(--surface); display:grid; place-items:center; box-shadow:var(--shadow-sm)}
+.dial{width:104px; height:104px; margin:0 auto 12px; border-radius:50%; display:grid; place-items:center; flex-shrink:0;
+  background:var(--grad, conic-gradient(from 180deg, var(--tier,#F26B3A) var(--sweep,0deg), var(--dial-track) 0));}
+.dial .dial-in{width:78%; height:78%; border-radius:50%; background:var(--surface); display:grid; place-items:center; box-shadow:var(--shadow-sm); text-align:center; line-height:1}
 .dial .dial-g{font-family:var(--display); font-weight:800; font-size:2rem; letter-spacing:-0.03em; color:var(--ink); line-height:1}
+.dial .dial-n{font-family:var(--display); font-weight:800; letter-spacing:-0.03em; color:var(--ink); line-height:0.95}
+.dial .dial-lbl{font-family:var(--mono); color:var(--ink-faint); letter-spacing:.08em; line-height:1; margin-top:1px}
+.dial-badge{position:absolute; top:10px; left:10px; border-radius:50%; box-shadow:0 4px 12px -4px rgba(60,30,15,.55), 0 0 0 3px rgba(255,255,255,.85)}
+:root:not([data-theme="light"]) .dial-badge{box-shadow:0 4px 12px -4px rgba(0,0,0,.6), 0 0 0 3px rgba(44,37,33,.9)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .dial-badge{box-shadow:0 4px 12px -4px rgba(0,0,0,.6), 0 0 0 3px rgba(44,37,33,.9)}}
+.gpill{display:inline-flex; align-items:center; justify-content:center; min-width:22px; height:20px; padding:0 7px; border-radius:999px; font-family:var(--display); font-weight:800; font-size:12px; line-height:1}
+.gpill.gA,.gpill.gB{background:var(--good-soft); color:var(--good)} .gpill.gC{background:var(--watch-soft); color:var(--watch)} .gpill.gD,.gpill.gF{background:var(--risk-soft); color:var(--risk)}
 .rail-score .num{font-size:1.05rem; font-weight:800} .rail-score .num small{color:var(--ink-faint); font-weight:600}
 .rail-score .lbl{font-family:var(--mono); font-size:11px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.06em; margin-top:3px}
+/* review sub-score sliders */
+.dim-slider{display:grid; grid-template-columns:1fr; gap:5px}
+.dim-slider .dh{display:flex; justify-content:space-between; align-items:center; font-size:13.5px; color:var(--ink-soft); font-weight:600}
+.dim-slider .dh .dv{font-family:var(--mono); font-weight:700; font-variant-numeric:tabular-nums}
+.dim-slider .dh .dv.set{color:var(--heat-deep)} .dim-slider .dh .dv.unset{color:var(--ink-faint)}
+.dim-slider input[type=range]{-webkit-appearance:none; appearance:none; width:100%; height:8px; border-radius:5px; background:var(--surface-3); outline:none; cursor:pointer; margin:2px 0}
+.dim-slider input[type=range].on{background:linear-gradient(90deg,#4DA9DF,var(--tc,var(--heat)) var(--fill,50%),var(--surface-3) var(--fill,50%))}
+.dim-slider input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; appearance:none; width:20px; height:20px; border-radius:50%; background:#fff; border:2px solid var(--heat); box-shadow:0 2px 6px rgba(60,30,15,.35); cursor:pointer}
+.dim-slider input[type=range]::-moz-range-thumb{width:18px; height:18px; border-radius:50%; background:#fff; border:2px solid var(--heat); box-shadow:0 2px 6px rgba(60,30,15,.35); cursor:pointer}
+/* map callout + zoom */
+.mapbox{position:relative}
+.mapzoom{position:absolute; top:12px; right:12px; display:flex; flex-direction:column; gap:6px; z-index:5}
+.mapzoom button{width:34px; height:34px; border-radius:10px; border:1px solid var(--line); background:var(--surface); color:var(--ink); font-size:19px; font-weight:700; line-height:1; cursor:pointer; box-shadow:var(--shadow-sm); display:grid; place-items:center}
+.mapzoom button:hover{background:var(--surface-2)}
+#map-main{overflow:auto; -webkit-overflow-scrolling:touch}
+#map-main svg{transition:width .18s ease, height .18s ease; display:block; margin:0 auto}
+.mapcallout{position:absolute; left:12px; bottom:12px; max-width:280px; background:var(--surface); border:1px solid var(--line); border-radius:16px; box-shadow:0 20px 50px -22px rgba(60,30,15,.55); padding:14px; display:none; z-index:6; animation:calloutIn .16s ease}
+.mapcallout.show{display:block}
+@keyframes calloutIn{from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:none}}
+.mapcallout .co-head{display:flex; gap:12px; align-items:center}
+.mapcallout .co-name{font-family:var(--display); font-weight:800; font-size:15px; letter-spacing:-0.02em; line-height:1.15}
+.mapcallout .co-sub{font-size:12px; color:var(--ink-soft); margin-top:2px}
+.mapcallout .co-stats{display:flex; gap:6px; flex-wrap:wrap; margin:10px 0; font-family:var(--mono); font-size:11px}
+.mapcallout .co-stats span{background:var(--surface-2); color:var(--ink-soft); padding:3px 8px; border-radius:6px}
+.mapcallout .co-close{position:absolute; top:8px; right:11px; border:none; background:none; color:var(--ink-faint); font-size:19px; line-height:1; cursor:pointer}
+.bpin.sel path{stroke-width:2; filter:drop-shadow(0 3px 5px rgba(60,30,15,.5))}
 .rail-actions{display:grid; gap:9px; margin-top:14px}
 .gallery{display:flex; gap:9px; overflow-x:auto; padding:2px; scrollbar-width:none}
 .gallery::-webkit-scrollbar{display:none}
@@ -340,7 +373,8 @@ details.res-wrap>summary::-webkit-details-marker{display:none}
 .chiprow{display:flex;gap:7px;flex-wrap:wrap}
 .chiptog{font-size:12.5px;font-weight:600;padding:7px 12px;border-radius:999px;border:1.5px solid var(--line-strong);background:var(--surface);color:var(--ink-soft)}
 .chiptog.on{background:var(--heat);color:#fff;border-color:var(--heat)}
-.mini-dims{display:grid;gap:10px}
+.mini-dims{display:grid;grid-template-columns:1fr 1fr;gap:16px 26px}
+@media(max-width:560px){.mini-dims{grid-template-columns:1fr}}
 .mini-dims .md{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .mini-dims .md .l{font-size:13px;color:var(--ink-soft);font-weight:600}
 
@@ -759,6 +793,17 @@ function scoreBreakdown(b){const r=ratingOf(b.id);let rec;if(b.demo){const d=b.d
 function gradeOf(sc){return sc>=85?'A':sc>=70?'B':sc>=55?'C':sc>=40?'D':'F';}
 function gradeClass(g){return {A:'gA',B:'gB',C:'gC',D:'gD',F:'gF'}[g]||'gC';}
 function tierColor(g){return {A:'#37946A',B:'#4A9D5F',C:'#E0A32E',D:'#E07E3A',F:'#E0574A'}[g]||'#E0A32E';}
+/* signature temperature dial — spectral sweep scaled to score, number inside */
+function dialGrad(sc){const sw=Math.max(6,Math.min(360,sc/100*360));const g=gradeOf(sc);const d=n=>Math.round(sw*n)+'deg';let stops;
+  if(g==='A')stops=`#7bc47a 0deg,#37946A ${d(1)}`;
+  else if(g==='B')stops=`#4DA9DF 0deg,#7bc47a ${d(0.42)},#F5C33B ${d(0.78)},#F26B3A ${d(1)}`;
+  else if(g==='C')stops=`#4DA9DF 0deg,#7bc47a ${d(0.5)},#E0A32E ${d(1)}`;
+  else if(g==='D')stops=`#4DA9DF 0deg,#E0A32E ${d(0.5)},#E0574A ${d(1)}`;
+  else stops=`#4DA9DF 0deg,#E07E3A ${d(0.5)},#E0574A ${d(1)}`;
+  return `conic-gradient(from 180deg,${stops},var(--dial-track) ${d(1)})`;}
+function dialHTML(sc,o){o=o||{};const size=o.size||104;const nsz=(size*0.30).toFixed(1);const cls='dial'+(o.badge?' dial-badge':'');
+  const lbl=o.showLabel?`<div class="dial-lbl" style="font-size:${(size*0.078).toFixed(1)}px">SCORE</div>`:'';
+  return `<div class="${cls}" style="width:${size}px;height:${size}px;margin:0;--grad:${dialGrad(sc)}" role="img" aria-label="Radiator score ${sc} of 100"><div class="dial-in"><div class="dial-n" style="font-size:${nsz}px">${sc}</div>${lbl}</div></div>`;}
 function percentileOf(b){if(b.demo||b.lat==null)return null;const peers=REAL.filter(x=>x.hood===b.hood);if(peers.length<4)return null;const better=peers.filter(x=>x.open>b.open).length;const worse=peers.filter(x=>x.open<b.open).length;return {betterPct:Math.round(better/peers.length*100),worsePct:Math.round(worse/peers.length*100),clean:b.open===0};}
 function portfolioOf(b){if(b.demo){const s=DEMO.filter(x=>x.co===b.co);return{key:b.co,name:b.co,buildings:s};}const s=REAL.filter(x=>x.pg&&x.pg===b.pg);return{key:b.pg,name:'City property group #'+b.pg,buildings:s};}
 /* ===== management-company naming (shared, keyed by property group) ===== */
@@ -1045,7 +1090,7 @@ function viewHome(){
     </div>
     <div class="feat3">
       <div class="fcard"><div class="fic">🌡️</div><h3>A score you can trust</h3><p>Every building gets a 0–100 Radiator Score and letter grade, built from real city violation records and verified tenant reviews — not vibes.</p>
-        <div style="display:flex;align-items:center;gap:14px;margin-top:16px"><div class="dial" style="width:66px;height:66px;--sweep:266deg;--tier:#E0A32E;margin:0"><div class="dial-in" style="width:50px;height:50px"><div class="dial-g" style="font-size:1.3rem">B</div></div></div><div style="font-family:var(--mono);font-size:12px;color:var(--ink-faint)">74 / 100<br>Watch list</div></div></div>
+        <div style="display:flex;align-items:center;gap:14px;margin-top:16px">${dialHTML(74,{size:66})}<div style="font-family:var(--mono);font-size:12px;color:var(--ink-faint)">74 / 100<br>Watch list</div></div></div>
       <div class="fcard"><div class="fic">🏛️</div><h3>Real City records</h3><p>${total} Chicago buildings with their code-violation history, translated from government tables into plain English — open vs resolved, and what keeps breaking.</p></div>
       <div class="fcard"><div class="fic">💬</div><h3>Reviews that count</h3><p>Structured, verified-tenant reviews with sub-scores and "what I wish I'd known," plus ratings aggregated from Google, Yelp &amp; Reddit — all in one place.</p></div>
     </div>
@@ -1102,10 +1147,10 @@ function bcard(b){const r=b._r||ratingOf(b.id);const sc=b._s||scoreOf(b);const g
   return `<div class="bcard">
     <button class="thumb ${ph?'hasimg':''}" style="${ph?'':gradOf(seed)};border:none;width:100%;cursor:pointer" onclick="go('building','${b.id}')">
       ${ph?`<img class="cover-img" src="${ph}" alt=""><div class="scrim"></div>`:`<span class="ph-emoji">${emoOf(seed)}</span>`}
-      <div class="score-badge"><span class="scorechip"><span class="g ${gradeClass(g)}">${g}</span><span class="n">${sc}<small>/100</small></span></span></div></button>
+      ${dialHTML(sc,{size:52,badge:true})}</button>
     <div class="bcard-body">
       <button style="background:none;border:none;text-align:left;padding:0;cursor:pointer" onclick="go('building','${b.id}')">
-        <div class="name">${esc(dn)}</div><div class="addr">${esc(custom?b.addr:(b.demo?b.addr:b.hood))}</div></button>
+        <div class="name">${esc(dn)} <span class="gpill ${gradeClass(g)}">${g}</span></div><div class="addr">${esc(custom?b.addr:(b.demo?b.addr:b.hood))}</div></button>
       <div class="recline">${recLine}</div>
       <div class="meta">
         ${r.n?`<span class="rating-pill">${r.avg.toFixed(1)} ${starsHTML(r.avg)} <small>(${r.n})</small></span>`:`<span class="rating-pill" style="color:var(--ink-faint);font-weight:600">No reviews yet</span>`}
@@ -1122,11 +1167,11 @@ function setRecency(r){reviewRecency=r;reviewRecencyFor=nav.id;render();}
 function viewMap(){
   return `<h1 class="page-t">Chicago risk map</h1><p class="page-sub">Every tracked building plotted on the city's real neighborhood boundaries, colored by open-violation risk. Filter to a neighborhood to drop pins; click any marker to open it.</p>
   <div class="maplayout">
-    <div><div class="mapbox"><div id="map-main"></div><div class="maplegend"><span><i style="background:var(--good)"></i>Good standing</span><span><i style="background:var(--watch)"></i>Watch</span><span><i style="background:var(--risk)"></i>High risk</span></div></div><div class="mapcap" id="mapcap"></div></div>
+    <div><div class="mapbox"><div class="mapzoom"><button onclick="mapZoom(1)" aria-label="Zoom in">+</button><button onclick="mapZoom(-1)" aria-label="Zoom out">−</button><button onclick="mapZoom(0)" aria-label="Reset zoom" title="Reset zoom" style="font-size:14px">⤢</button></div><div id="map-main"></div><div class="mapcallout" id="mapcallout"><button class="co-close" onclick="hideMapCallout()" aria-label="Close">×</button><div id="mapcallout-body"></div></div><div class="maplegend"><span><i style="background:var(--good)"></i>Good standing</span><span><i style="background:var(--watch)"></i>Watch</span><span><i style="background:var(--risk)"></i>High risk</span></div></div><div class="mapcap" id="mapcap"></div></div>
     <div class="map-side">
       <div class="selpill" style="width:100%"><select onchange="setFilter('hood',this.value)"><option value="all">All neighborhoods</option>${HOODS.map(h=>`<option value="${esc(h)}"${hoodFilter===h?' selected':''}>${esc(h)}</option>`).join('')}</select></div>
       <div class="selpill" style="width:100%"><select onchange="setFilter('risk',this.value)"><option value="all">Any risk</option><option value="good"${riskFilter==='good'?' selected':''}>Good standing</option><option value="watch"${riskFilter==='watch'?' selected':''}>Watch list</option><option value="risk"${riskFilter==='risk'?' selected':''}>High risk</option></select></div>
-      <div class="hint">Dots are sized and colored by how many open building-code violations each address has on file with the City of Chicago. Bigger red dots = more open violations. ${isDemo()?'<b>Switch to Live mode in Profile to see the real map.</b>':''}</div>
+      <div class="hint">Pins are colored by how many open building-code violations each address has on file with the City of Chicago — green good, amber watch, red high risk. Zoom in or filter to a neighborhood and each pin shows that building's Radiator Score; tap one for a quick card. ${isDemo()?'<b>Switch to Live mode in Profile to see the real map.</b>':''}</div>
     </div>
   </div>`;
 }
@@ -1142,16 +1187,34 @@ function drawMap(mountId){const mount=$('#'+mountId);if(!mount||!CHI.hoods||!CHI
   if(list.length>MAP_CAP){const step=Math.ceil(list.length/MAP_CAP);list=list.filter((_,i)=>i%step===0);sampled=true;}
   const paths=CHI.hoods.map(h=>{if(!h.ring||h.ring.length<3)return '';const sel=hoodFilter!=='all'&&h.name===hoodFilter;const d='M'+h.ring.map(p=>X(p[0]).toFixed(1)+','+Y(p[1]).toFixed(1)).join('L')+'Z';return `<path class="hoodpath${sel?' sel':''}" d="${d}" data-hood="${esc(h.name)}"/>`;}).join('');
   const asPins = list.length<=600;
+  const showNum = list.length<=140;
   const marks=list.map(b=>{if(b.lat==null)return '';const r=riskOf(b);const cls=['g','w','r'][r];const x=X(b.lng).toFixed(1);const y=Y(b.lat).toFixed(1);
-    if(asPins){const k=(r===2?2.0:r===1?1.7:1.5).toFixed(2);return `<g class="bpin ${cls}" data-id="${b.id}" transform="translate(${x},${y}) scale(${k})"><path d="M0,0 C-6,-10 -6,-16 0,-16 C6,-16 6,-10 0,0 Z"/><circle cx="0" cy="-11" r="2.6" fill="#fff" pointer-events="none"/></g>`;}
+    if(asPins){const k=(r===2?(showNum?2.4:2.0):r===1?(showNum?2.2:1.7):(showNum?2.1:1.5)).toFixed(2);
+      const inner=showNum?`<text x="0" y="-11" text-anchor="middle" dominant-baseline="central" font-family="'Bricolage Grotesque',sans-serif" font-weight="800" font-size="6.6" fill="#fff" pointer-events="none">${scoreOf(b)}</text>`:`<circle cx="0" cy="-11" r="2.6" fill="#fff" pointer-events="none"/>`;
+      return `<g class="bpin ${cls}" data-id="${b.id}" transform="translate(${x},${y}) scale(${k})"><path d="M0,0 C-6.5,-11 -6.5,-17 0,-17 C6.5,-17 6.5,-11 0,0 Z"/>${inner}</g>`;}
     const rad=r===2?4.2:r===1?3.2:2.6;return `<circle class="bdot ${cls}" cx="${x}" cy="${y}" r="${rad}" data-id="${b.id}"/>`;}).join('');
   mount.innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" aria-label="Chicago building risk map">${paths}${marks}</svg>`;
   const cap=$('#mapcap'); if(cap) cap.textContent = sampled?`Showing a ${list.length.toLocaleString()}-building sample of ${totalDots.toLocaleString()} — pick a neighborhood to see every one.`:`${totalDots.toLocaleString()} building${totalDots===1?'':'s'} shown · source: City of Chicago`;
+  mount.style.maxHeight='';mount.style.overflow='';delete mount.dataset.frozen;mapZoomLevel=1;
   mount.querySelector('svg').addEventListener('click',e=>{const t=e.target;const pin=t&&t.closest?t.closest('.bpin'):null;
-    if(t&&t.classList.contains('bdot')){const id=t.getAttribute('data-id');if(id)go('building',id);}
-    else if(pin){const id=pin.getAttribute('data-id');if(id)go('building',id);}
-    else if(t&&t.classList.contains('hoodpath')){const h=t.getAttribute('data-hood');if(h){hoodFilter=h;render();}}});
+    const id=(t&&t.classList.contains('bdot'))?t.getAttribute('data-id'):(pin?pin.getAttribute('data-id'):null);
+    if(id){const svg=mount.querySelector('svg');[...svg.querySelectorAll('.bpin.sel')].forEach(p=>p.classList.remove('sel'));if(pin)pin.classList.add('sel');showMapCallout(id);}
+    else if(t&&t.classList.contains('hoodpath')){const h=t.getAttribute('data-hood');if(h){hoodFilter=h;render();}}
+    else{hideMapCallout();}});
 }
+let mapZoomLevel=1;
+function mapZoom(dir){const wrap=$('#map-main');const svg=wrap&&wrap.querySelector('svg');if(!svg)return;
+  if(!wrap.dataset.frozen){wrap.style.maxHeight=wrap.clientHeight+'px';wrap.style.overflow='auto';wrap.dataset.frozen='1';}
+  if(dir===0)mapZoomLevel=1;else mapZoomLevel=Math.max(1,Math.min(4,+(mapZoomLevel+(dir>0?0.5:-0.5)).toFixed(2)));
+  svg.style.width=(mapZoomLevel*100)+'%';
+  if(mapZoomLevel===1){wrap.style.maxHeight='';wrap.style.overflow='';delete wrap.dataset.frozen;}}
+function showMapCallout(id){const b=bById(id);if(!b)return;const box=$('#mapcallout');const body=$('#mapcallout-body');if(!box||!body)return;
+  const sc=scoreOf(b);const r=ratingOf(id);const recs=b.demo?esc(b.co):`<b>${b.open}</b> open · <b>${b.fixed}</b> resolved`;
+  body.innerHTML=`<div class="co-head">${dialHTML(sc,{size:52})}<div><div class="co-name">${esc(nameOf(b))}</div><div class="co-sub">${esc(b.demo?b.addr:b.hood)}</div></div></div>
+    <div class="co-stats"><span>${recs}</span>${r.n?`<span>${r.avg.toFixed(1)}★ · ${r.n}</span>`:'<span>No reviews yet</span>'}</div>
+    <button class="btn primary full" onclick="go('building','${id}')">Open building →</button>`;
+  box.classList.add('show');}
+function hideMapCallout(){const box=$('#mapcallout');if(box)box.classList.remove('show');const svg=$('#map-main svg');if(svg)[...svg.querySelectorAll('.bpin.sel')].forEach(p=>p.classList.remove('sel'));}
 
 /* ============ BUILDING ============ */
 function viewBuilding(bid){const b=bById(bid);if(!b)return '<div class="empty">Building not found</div>';
@@ -1255,8 +1318,8 @@ function viewBuilding(bid){const b=bById(bid);if(!b)return '<div class="empty">B
     </div>
     <div>
       <div class="rail-score">
-        <div class="dial" style="--sweep:${(sc/100*360).toFixed(0)}deg;--tier:${tierColor(g)}"><div class="dial-in"><div class="dial-g">${g}</div></div></div>
-        <div class="num">${sc}<small>/100</small></div><div class="lbl">Radiator Score</div>
+        <div style="display:flex;justify-content:center">${dialHTML(sc,{size:120,showLabel:true})}</div>
+        <div class="num" style="margin-top:8px">Grade <b style="color:${tierColor(g)}">${g}</b></div><div class="lbl">Radiator Score · out of 100</div>
         <div style="margin-top:12px">${flagHTML(b)}</div>
         <div class="rail-actions">
           <button class="btn primary full" onclick="go('write','${bid}')">${IC.plus}Write a review</button>
@@ -1380,7 +1443,7 @@ function viewLandlord(bid){const b=bById(bid);if(!b)return '<div class="empty">N
 function viewCompare(){const bs=S.compare.map(bById).filter(Boolean);
   if(!bs.length)return `<h1 class="page-t">Compare buildings</h1><p class="page-sub">Line buildings up side by side on score, violations, rating and more.</p><div class="empty"><div class="em">⚖️</div><div class="t">Nothing to compare yet</div><div class="d">Tap “+ Compare” on any building card or profile to add it here (up to 6).</div><div style="margin-top:16px"><button class="btn primary" style="display:inline-flex;width:auto" onclick="tab('explore')">Browse buildings</button></div></div>`;
   const rows=[
-    {k:'Radiator Score',f:b=>{const sc=scoreOf(b);return `<span class="big">${sc}</span> <span style="color:var(--ink-faint)">${gradeOf(sc)}</span>`;}},
+    {k:'Radiator Score',f:b=>{const sc=scoreOf(b);const g=gradeOf(sc);return `<div style="display:flex;flex-direction:column;align-items:center;gap:6px">${dialHTML(sc,{size:64})}<span class="gpill ${gradeClass(g)}">${g}</span></div>`;}},
     {k:'Risk',f:b=>`<span class="flag ${RISK_CLASS[riskOf(b)]}" style="display:inline-flex"><span class="dot"></span>${RISK_LABEL[riskOf(b)]}</span>`},
     {k:'Open violations',f:b=>`<span class="big">${b.demo?b.data.viol:b.open}</span>`},
     {k:'Resolved (since ’24)',f:b=>b.demo?'—':`<span class="big">${b.fixed}</span>`},
@@ -1458,7 +1521,7 @@ let draft=null;
 function viewWrite(bid){const b=bid?bById(bid):null;
   const pick=b?`<div class="field" style="margin:0"><label>Building</label><div class="rev" style="border:none;padding:0"><div class="rhead"><div class="av">${emoOf(hashStr(b.id+b.name))}</div><div class="who"><div class="n">${esc(nameOf(b))}</div><div class="sub">${esc(b.demo?b.addr:b.hood)}</div></div></div></div></div>`
     :`<div class="field" style="margin:0"><label for="w-building">Which building?</label><div class="hint">Search a name or address, or type any Chicago address to add it.</div><input type="text" id="w-building" list="blds" value="${esc(prefillAddr)}" placeholder="Search name or address"><datalist id="blds">${(isDemo()?DEMO:REAL).slice(0,140).map(x=>`<option value="${esc(x.name)}">`).join('')}</datalist></div>`;
-  const dimRows=REVIEW_DIMS.map(d=>`<div class="md"><span class="l">${d.l}</span><div class="star-input" id="si-${d.k}">${[1,2,3,4,5].map(i=>`<button type="button" onclick="setStar('${d.k}',${i})">★</button>`).join('')}</div></div>`).join('');
+  const dimRows=REVIEW_DIMS.map(d=>`<div class="dim-slider"><div class="dh"><span>${d.l}</span><span class="dv unset" id="dv-${d.k}">—</span></div><input type="range" min="0" max="5" step="1" value="0" id="si-${d.k}" aria-label="${d.l}" oninput="setSlider('${d.k}',this.value)"></div>`).join('');
   const unitSingles=UNIT_SINGLE.map(u=>`<div class="field" style="margin:0"><label>${u.l}</label><select id="u-${u.k}"><option value="">—</option>${u.opts.map(o=>`<option value="${esc(o)}">${esc(o)}</option>`).join('')}</select></div>`).join('');
   const unitMultis=UNIT_MULTI.map(u=>`<div class="field" style="margin:0"><label>${u.l}</label><div class="chiprow" id="um-${u.k}">${u.opts.map(o=>`<button type="button" class="chiptog" onclick="toggleUnitMulti('${u.k}','${esc(o)}',this)">${esc(o)}</button>`).join('')}</div></div>`).join('');
   return `<h1 class="page-t">Review this building</h1><p class="page-sub">The more specific you are, the more you help the next renter. Only the overall rating and a few words are required — everything else is optional. Posting unlocks 30 days of full access.</p>
@@ -1497,6 +1560,9 @@ function viewWrite(bid){const b=bid?bById(bid):null;
 }
 function initWriteForm(){draft={overall:0,sub:{},photos:[],unit:{pests:[],nearby:[],noiseSrc:[]},would:null,surprise:null};REVIEW_DIMS.forEach(d=>draft.sub[d.k]=0);prefillAddr='';}
 function setStar(k,v){if(k==='overall')draft.overall=v;else draft.sub[k]=v;const w=$('#si-'+k);if(w)[...w.children].forEach((btn,i)=>btn.classList.toggle('on',i<v));}
+function setSlider(k,v){v=+v;draft.sub[k]=v;const inp=$('#si-'+k);const dv=$('#dv-'+k);const pct=v/5*100;const tc=tierColor(gradeOf(pct));
+  if(inp){inp.style.setProperty('--fill',pct+'%');inp.style.setProperty('--tc',tc);inp.classList.toggle('on',v>0);}
+  if(dv){dv.textContent=v>0?v+'/5':'—';dv.style.color=v>0?tc:'';dv.className='dv '+(v>0?'set':'unset');}}
 function toggleUnitMulti(k,v,el){if(!draft.unit[k])draft.unit[k]=[];const i=draft.unit[k].indexOf(v);if(i>=0){draft.unit[k].splice(i,1);el.classList.remove('on');}else{draft.unit[k].push(v);el.classList.add('on');}}
 function setWould(v,el){draft.would=v;[...el.parentNode.children].forEach(b=>b.classList.remove('on'));el.classList.add('on');}
 function setSurprise(v,el){draft.surprise=v;[...el.parentNode.children].forEach(b=>b.classList.remove('on'));el.classList.add('on');}
