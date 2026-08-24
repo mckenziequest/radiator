@@ -1,0 +1,45 @@
+# One-click deploy for Render.com (free tier).
+#
+# In Render:  New +  →  Blueprint  →  connect the repo with this folder.
+# Render reads this file, spins up the web app AND a free Postgres database,
+# and wires them together automatically. You don't have to paste anything to
+# go live — the Google/Yelp/Reddit keys are OPTIONAL (leave them blank and the
+# app runs fine; outside reviews just stay off until you add them later).
+#
+# What you get: the full Radiator site at https://<your-name>.onrender.com,
+# with tenant reviews SHARED across every visitor (stored in the database).
+
+databases:
+  - name: radiator-db
+    plan: free
+    databaseName: radiator
+    user: radiator
+
+services:
+  - type: web
+    name: radiator
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /api/health
+    envVars:
+      # Shared review database — wired automatically from the Postgres above.
+      - key: DATABASE_URL
+        fromDatabase:
+          name: radiator-db
+          property: connectionString
+      # OPTIONAL outside-review keys — leave blank to launch; add later in the
+      # Render dashboard to switch on Google / Yelp / Reddit aggregation.
+      - key: GOOGLE_PLACES_KEY
+        sync: false
+      - key: YELP_API_KEY
+        sync: false
+      - key: REDDIT_CLIENT_ID
+        sync: false
+      - key: REDDIT_CLIENT_SECRET
+        sync: false
+      - key: CORS_ORIGIN
+        value: "*"
+      - key: CACHE_HOURS
+        value: "12"

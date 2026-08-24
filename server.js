@@ -1,0 +1,118 @@
+// server.js — Radiator review-aggregation API.
+//
+// Exposes:
+//   GET /api/health
+//   GET /api/building?address=1600+N+Damen+Ave   (optionally &radiatorRating=4.2&radiatorCount=3)
+//
+// Pulls Google Places + Yelp Fusion reviews for the address, optionally folds
+// in Radiator's own tenant reviews (passed by the caller), and returns a single
+// combined score + unified review list. Results are cached to respect API rate
+// limits and cost.
+//
+// Run:  MOCK=1 node server.js         (no keys needed, canned data)
+//       node server.js                (needs GOOGLE_PLACES_KEY + YELP_API_KEY)
+
+const express = require('express');
+const path = require('path');
+const { getGoogle } = require('./providers/google');
+const { getYelp } = require('./providers/yelp');
+const { getReddit } = require('./providers/reddit');
+const { combine } = require('./aggregate');
+const store = require('./store');
+const community = require('./community');
+
+const app = express();
+app.use(express.json({ limit: '12mb' })); // room for base64 photos
+const PORT = process.env.PORT || 8787;
+const TTL_MS = (Number(process.env.CACHE_HOURS) || 12) * 3600 * 1000;
+
+// --- CORS (so the Radiator frontend on your domain can call this) ---
+const ALLOW = process.env.CORS_ORIGIN || '*';
+app.use((req, res, next) => {
+  res.set('Access-Control-Allow-Origin', ALLOW);
+  res.set('Access-Control-Allow-Headers', 'Content-Type');
+  res.set('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+});
+
+// --- tiny in-memory cache (swap for Redis in production) ---
+const cache = new Map();
+function cacheGet(k) {
+  const e = cache.get(k);
+  if (e && Date.now() - e.t < TTL_MS) return e.v;
+  if (e) cache.delete(k);
+  return null;
+}
+function cacheSet(k, v) {
+  cache.set(k, { t: Date.now(), v });
+}
+
+app.get('/api/health', (_req, res) => {
+  res.json({
+    ok: true,
+    mock: process.env.MOCK === '1',
+    google: !!process.env.GOOGLE_PLACES_KEY || process.env.MOCK === '1',
+    yelp: !!process.env.YELP_API_KEY || process.env.MOCK === '1',
+    reddit: !!process.env.REDDIT_CLIENT_ID || process.env.MOCK === '1',
+    cached: cache.size,
+  });
+});
+
+app.get('/api/building', async (req, res) => {
+  const address = (req.query.address || '').toString().trim();
+  if (!address) return res.status(400).json({ error: 'address query param required' });
+
+  const cacheKey = address.toLowerCase();
+  const cached = cacheGet(cacheKey);
+  const sources = [];
+
+  // Optional: caller can pass Radiator's own aggregate so it's blended in.
+  const rRating = parseFloat(req.query.radiatorRating);
+  const rCount = parseInt(req.query.radiatorCount, 10);
+  if (rRating > 0 && rCount > 0) {
+    sources.push({ source: 'radiator', rating: rRating, count: rCount, url: null, reviews: [] });
+  }
+
+  try {
+    let external;
+    if (cached) {
+      external = cached; // {google, yelp, reddit} already fetched
+    } else {
+      const [g, y, r] = await Promise.allSettled([getGoogle(address), getYelp(address), getReddit(address)]);
+      external = {
+        google: g.status === 'fulfilled' ? g.value : null,
+        yelp: y.status === 'fulfilled' ? y.value : null,
+        reddit: r.status === 'fulfilled' ? r.value : null,
+      };
+      cacheSet(cacheKey, external);
+    }
+    if (external.google) sources.push(external.google);
+    if (external.yelp) sources.push(external.yelp);
+    if (external.reddit) sources.push(external.reddit);
+
+    const result = combine(address, sources);
+    result.cached = !!cached;
+    res.json(result);
+  } catch (err) {
+    console.error('aggregate error:', err);
+    res.status(502).json({ error: 'aggregation failed', detail: String(err && err.message || err) });
+  }
+});
+
+// ---- shared community content (reviews, issues, Q&A, names, photos) ----
+community.mount(app);
+
+// ---- serve the Radiator web app itself, so ONE deploy runs everything ----
+const PUBLIC = path.join(__dirname, 'public');
+app.use(express.static(PUBLIC, { maxAge: '1h', extensions: ['html'] }));
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api/')) return next();
+  res.sendFile(path.join(PUBLIC, 'index.html'), err => { if (err) next(); });
+});
+
+store.init()
+  .then(() => app.listen(PORT, () => {
+    console.log(`Radiator app + API on :${PORT}  (mock=${process.env.MOCK === '1'}, store=${store.HAS_PG ? 'postgres' : 'json-file'})`);
+  }))
+  .catch(e => { console.error('store init failed:', e); process.exit(1); });

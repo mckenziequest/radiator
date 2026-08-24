@@ -1,0 +1,18 @@
+{
+  "name": "radiator-backend",
+  "version": "1.0.0",
+  "description": "Radiator — the full Chicago rental-reviews app + API. Serves the web app and stores tenant reviews/issues/Q&A shared across all visitors (Postgres in prod, JSON file locally), plus Google/Yelp/Reddit aggregation.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "MOCK=1 node server.js",
+    "test": "node test.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "pg": "^8.23.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
