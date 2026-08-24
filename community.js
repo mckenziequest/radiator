@@ -112,6 +112,21 @@ function mount(app) {
     catch (e) { console.error(e); res.status(500).json({ error: 'save failed' }); }
   });
 
+  // Landlord / management right-of-reply on a review (public, marked unverified)
+  app.post('/api/replies', async (req, res) => {
+    if (guard(req, res)) return;
+    const b = req.body || {};
+    if (!id(b.rid) || !clean(b.text)) return res.status(400).json({ error: 'A review and a reply are required.' });
+    const rp = {
+      id: id(b.id) || ('rp_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7)),
+      b: bid(b.b), rid: id(b.rid), ts: Date.now(), shared: true, role: 'management',
+      by: clean(b.by, 60) || 'Property management',
+      text: clean(b.text, 2000),
+    };
+    try { await store.putItem('reply', rp); res.json({ ok: true, item: rp }); }
+    catch (e) { console.error(e); res.status(500).json({ error: 'save failed' }); }
+  });
+
   // Name a building
   app.post('/api/names', async (req, res) => {
     if (guard(req, res)) return;

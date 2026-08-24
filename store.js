@@ -16,7 +16,7 @@ const fs = require('fs');
 const path = require('path');
 
 const HAS_PG = !!process.env.DATABASE_URL;
-const KINDS = ['review', 'issue', 'qa', 'name', 'photo'];
+const KINDS = ['review', 'issue', 'qa', 'name', 'photo', 'reply'];
 
 let pg = null;
 if (HAS_PG) {
@@ -174,12 +174,13 @@ async function getAll(since) {
       .map(r => ({ ...r.data, _kind: r.kind }));
     helpful = m.helpful;
   }
-  const out = { reviews: [], issues: [], qa: [], names: {}, photos: [], helpful, now: Date.now() };
+  const out = { reviews: [], issues: [], qa: [], names: {}, photos: [], replies: [], helpful, now: Date.now() };
   for (const it of items) {
     if (it._kind === 'review') out.reviews.push(strip(it));
     else if (it._kind === 'issue') out.issues.push(strip(it));
     else if (it._kind === 'qa') out.qa.push(strip(it));
     else if (it._kind === 'photo') out.photos.push(strip(it));
+    else if (it._kind === 'reply') out.replies.push(strip(it));
     else if (it._kind === 'name') out.names[it.b] = it.name;
   }
   return out;
