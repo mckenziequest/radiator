@@ -81,17 +81,20 @@ async function getGoogle(address) {
   }
   if (!top) return null;
 
-  // Place Details for a few review snippets + photo references (best effort).
+  // Place Details for a few review snippets + photo references + the property's
+  // official website (best effort).
   let reviews = [];
   let photoRefs = [];
+  let website = null;
   let placeUrl = 'https://www.google.com/maps/place/?q=place_id:' + top.place_id;
   try {
     const detUrl =
       'https://maps.googleapis.com/maps/api/place/details/json' +
       '?place_id=' + top.place_id +
-      '&fields=url,reviews,photos&key=' + KEY;
+      '&fields=url,website,reviews,photos&key=' + KEY;
     const det = (await (await fetch(detUrl)).json()).result || {};
     if (det.url) placeUrl = det.url;
+    if (det.website && /^https?:\/\//i.test(det.website)) website = det.website;
     reviews = (det.reviews || []).map((r) => ({
       author: r.author_name,
       rating: r.rating,
@@ -110,6 +113,7 @@ async function getGoogle(address) {
     rating: top.rating,
     count: top.user_ratings_total || 0,
     url: placeUrl,
+    website,
     reviews,
     photoRefs,
   };
@@ -122,6 +126,7 @@ function mockGoogle(address) {
     rating: 4.1,
     count: 128,
     url: 'https://maps.google.com/?cid=example',
+    website: 'https://www.example.com',
     reviews: [
       { author: 'Jordan P.', rating: 5, text: 'Management is responsive and the building is well kept.', time: 1719792000, url: null },
       { author: 'Mia R.', rating: 2, text: 'Heat was inconsistent last winter and repairs were slow.', time: 1707004800, url: null },
