@@ -6,6 +6,7 @@
 <title>Radiator — Check a Chicago building before you sign</title>
 <meta name="description" content="Radiator scores 16,000+ Chicago buildings on real City of Chicago violation records, tenant reviews, rent history, and transit — plus management-company profiles. Check any apartment before you sign a lease.">
 <meta name="theme-color" content="#F26B3A">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23F26B3A'/%3E%3Ctext x='32' y='47' font-family='Georgia,serif' font-size='44' font-weight='700' fill='white' text-anchor='middle'%3ER%3C/text%3E%3C/svg%3E">
 </head>
 <body>
 <title>Radiator</title>
@@ -751,8 +752,31 @@ function webLinks(name,isCompany){const chi=' Chicago';const enc=s=>encodeURICom
     reddit:'https://www.reddit.com/search/?q='+enc('"'+name+'"'+chi)+'&sort=relevance',
     googleReddit:'https://www.google.com/search?q='+enc('site:reddit.com '+name+chi),
     google:'https://www.google.com/search?q='+enc(name+chi+(isCompany?' reviews':' apartment reviews')),
-    yelp:'https://www.yelp.com/search?find_desc='+enc(name)+'&find_loc='+enc('Chicago, IL')
+    yelp:'https://www.yelp.com/search?find_desc='+enc(name)+'&find_loc='+enc('Chicago, IL'),
+    apartmentRatings:'https://www.google.com/search?q='+enc('site:apartmentratings.com '+name+chi),
+    veryApt:'https://www.google.com/search?q='+enc('site:veryapt.com '+name+chi),
+    rateLandlord:'https://www.google.com/search?q='+enc('site:ratethelandlord.org '+name+(isCompany?'':chi))
   };
+}
+/* ===== neighborhood community deep links ===== */
+function neighborhoodLinks(hood){const enc=s=>encodeURIComponent(s);const h=hood+' Chicago';
+  return {
+    facebook:'https://www.facebook.com/search/groups/?q='+enc(h),
+    reddit:'https://www.reddit.com/search/?q='+enc(h)+'&sort=relevance',
+    nextdoor:'https://www.google.com/search?q='+enc('site:nextdoor.com '+h)
+  };
+}
+function neighborhoodWebCard(hood){if(!hood||hood==='Chicago')return '';const L=neighborhoodLinks(hood);
+  const btn=(href,label,sub,ic)=>`<a class="webbtn" href="${href}" target="_blank" rel="noopener noreferrer"><span class="wbi">${ic}</span><span class="wbtxt"><span class="wbt">${label}</span><span class="wbs">${sub}</span></span><span class="wbx">↗</span></a>`;
+  return `<div class="card"><div class="card-h"><span class="t">👋 ${esc(hood)} community</span></div><div class="card-b">
+    <p class="small-note" style="margin:0 0 12px">Connect with neighbors in <b style="color:var(--ink)">${esc(hood)}</b> — each opens that network's real search in a new tab.</p>
+    <div class="webbtns">
+      ${btn(L.facebook,'Facebook groups','Find the neighborhood group','👥')}
+      ${btn(L.reddit,'Reddit','Neighborhood threads','👽')}
+      ${btn(L.nextdoor,'Nextdoor','Local posts &amp; recommendations','🏘️')}
+    </div>
+    <div class="src-note" style="margin-top:12px">Radiator links out to public community spaces — it doesn't run or moderate them.</div>
+  </div></div>`;
 }
 /* ===== email capture (launch alerts / get-found signups) ===== */
 function signupBox(ctx,variant){
@@ -779,6 +803,9 @@ function aroundWebCard(name,isCompany){if(!name)return '';const L=webLinks(name,
       ${btn(L.googleReddit,'Reddit via Google','Often surfaces more threads','🔎')}
       ${btn(L.google,'Google','Ratings &amp; mentions','⭐')}
       ${btn(L.yelp,'Yelp','Business reviews','📣')}
+      ${btn(L.apartmentRatings,'ApartmentRatings','Building ratings &amp; reviews','🏢')}
+      ${btn(L.veryApt,'VeryApt','Renter reviews','🏠')}
+      ${btn(L.rateLandlord,'RateTheLandlord','Landlord track record','📋')}
     </div>
     <div class="src-note" style="margin-top:12px">Radiator links out to public discussion — it doesn't publish or endorse it. Read the original before drawing conclusions.</div>
   </div></div>`;
@@ -868,11 +895,12 @@ function render(){
   const v=nav.view;
   const inner = v==='home'?viewHome() : v==='building'?viewBuilding(nav.id) : v==='landlord'?viewLandlord(nav.id) : v==='write'?viewWrite(nav.id) : v==='issue'?viewIssue(nav.id)
     : v==='map'?viewMap() : v==='compare'?viewCompare() : v==='neighborhoods'?viewNeighborhoods() : v==='neighborhood'?viewNeighborhood(nav.id)
-    : v==='tools'?viewTools() : v==='guide'?viewGuide() : v==='saved'?viewSaved() : v==='pricing'?viewPricing() : v==='profile'?viewProfile() : viewExplore();
+    : v==='tools'?viewTools() : v==='guide'?viewGuide() : v==='saved'?viewSaved() : v==='pricing'?viewPricing() : v==='profile'?viewProfile()
+    : v==='terms'?viewLegal('terms') : v==='privacy'?viewLegal('privacy') : v==='guidelines'?viewLegal('guidelines') : viewExplore();
   const isHome = v==='home';
   const banner = isHome?'' : isDemo()?`<div class="samplebanner demo">Showcase mode · fictional buildings &amp; sample reviews — switch to Live in Profile</div>`
     :`<div class="samplebanner live">Live City of Chicago building records · ${REAL.length} buildings · updated ${esc(CHI.generated||'')}</div>`;
-  const showBack = ['building','landlord','write','issue','neighborhood','guide'].includes(v);
+  const showBack = ['building','landlord','write','issue','neighborhood','guide','terms','privacy','guidelines'].includes(v);
   $('#app').innerHTML=`
     ${banner}
     <div class="shell">
@@ -884,7 +912,7 @@ function render(){
           ${isHome?'<div class="spacer"></div>':`<div class="searchbox">${IC.search}<input id="q" placeholder="Search building name or address (e.g. Noca Blu)" value="${esc(searchQ)}" oninput="onSearch(this.value)" autocomplete="off"></div>
           <div class="spacer"></div>`}
         </div>
-        <div class="content ${(v==='map'||v==='compare')?'wide':''}"><div class="screen">${inner}</div></div>
+        <div class="content ${(v==='map'||v==='compare')?'wide':''}"><div class="screen">${inner}</div>${v==='home'?'':siteFooter()}</div>
       </div>
     </div>
     ${mobtabs()}`;
@@ -931,6 +959,60 @@ function mobtabs(){const v=nav.view;const isExp=['explore','building','landlord'
   </nav>`;
 }
 
+/* ============ LEGAL / FOOTER ============ */
+function siteFooter(){return `<footer style="max-width:960px;margin:44px auto 10px;padding:22px 16px 8px;border-top:1px solid var(--line);text-align:center;font-size:12.5px;color:var(--ink-faint);line-height:1.65;font-family:var(--sans)">
+  <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:10px">
+    <a onclick="tab('terms')" style="color:var(--ink-soft);cursor:pointer">Terms</a><span>·</span>
+    <a onclick="tab('privacy')" style="color:var(--ink-soft);cursor:pointer">Privacy</a><span>·</span>
+    <a onclick="tab('guidelines')" style="color:var(--ink-soft);cursor:pointer">Community Guidelines</a><span>·</span>
+    <a onclick="tab('pricing')" style="color:var(--ink-soft);cursor:pointer">Pricing</a>
+  </div>
+  <div>Reviews on Radiator are the personal experiences and opinions of the people who post them. City-record data reflects what has been reported to the City of Chicago — reports, not verdicts. Radiator provides information, not legal advice. © 2026 Radiator · Chicago</div>
+</footer>`;}
+function legalWrap(title,body){return `<div style="max-width:720px">
+  <h1 class="page-t">${title}</h1>
+  <p class="page-sub">Last updated: August 24, 2026.</p>
+  <div style="font-size:14.5px;line-height:1.72;color:var(--ink-soft)">${body}</div>
+  <p class="small-note" style="margin-top:20px">Questions or corrections? Use the in-app <b>Report</b> control on any review, or email <a href="mailto:hello@getradiator.com" style="color:var(--heat)">hello@getradiator.com</a>.</p>
+</div>`;}
+function viewLegal(which){
+  const H=s=>`<h3 style="color:var(--ink);font-family:var(--display);font-size:16px;margin:18px 0 6px">${s}</h3>`;
+  if(which==='terms')return legalWrap('Terms of Service',
+    `<p>Welcome to Radiator ("Radiator," "we," "us"). Radiator is a platform where renters share reviews and information about residential buildings, units, and landlords in Chicago, alongside publicly available government records. By using Radiator, you agree to these Terms.</p>
+    ${H('1. Who can use Radiator')}<p>You must be at least 18 and able to form a binding contract. Don't use Radiator if we've previously banned you.</p>
+    ${H('2. Your content')}<p>You keep ownership of what you post ("Your Content"). By posting, you grant us a worldwide, non-exclusive, royalty-free license to host, display, reproduce, and distribute Your Content in connection with operating and promoting Radiator. You are responsible for Your Content, and you represent that it reflects your genuine, firsthand experience or knowledge; that it is truthful to the best of your knowledge and stated honestly as your experience or opinion; and that it does not violate our Community Guidelines, any law, or anyone's rights.</p>
+    ${H('3. Content standards and moderation')}<p>All content must follow our Community Guidelines. We may — but are not obligated to — review, remove, or restrict content or accounts that we believe violate these Terms or the Guidelines, or that expose Radiator or others to liability. We are not responsible for content posted by users.</p>
+    ${H('4. Government records')}<p>Radiator displays information derived from public sources, including City of Chicago datasets. This information is provided "as is," may contain errors or be out of date, and reflects reports or records rather than findings of fact. Do not treat it as a verdict about any building or person.</p>
+    ${H('5. No professional advice')}<p>Radiator is not a law firm and does not provide legal advice. Tenant-rights summaries are general information, not advice about your situation. Consult a qualified attorney or the appropriate agency for advice.</p>
+    ${H('6. Paid access')}<p>Some features require payment or are unlocked by posting a review ("give-to-get"). Prices, passes, and subscriptions are described at checkout. Paid access is for your personal use.</p>
+    ${H('7. Acceptable use')}<p>Don't misuse Radiator: no scraping or bulk-harvesting data, no attempts to break or overload the service, no impersonation, no automated posting, no reselling access.</p>
+    ${H('8. Takedown and disputes')}<p>If you believe content is false, infringing, or violates these Terms, use the in-app Report control or contact us. We respond to good-faith requests and will remove content that violates these Terms or is shown to be false.</p>
+    ${H('9. Disclaimers')}<p>Radiator is provided "as is" and "as available," without warranties of any kind to the fullest extent permitted by law. We do not warrant that content is accurate, complete, or reliable.</p>
+    ${H('10. Limitation of liability')}<p>To the fullest extent permitted by law, Radiator and its operators are not liable for indirect, incidental, special, consequential, or punitive damages, or for any loss arising from your use of, or reliance on, the service or its content.</p>
+    ${H('11. Indemnification')}<p>You agree to indemnify and hold Radiator harmless from claims arising out of Your Content or your violation of these Terms.</p>
+    ${H('12. Changes and termination')}<p>We may update these Terms; material changes will be posted here with a new date. We may suspend or terminate access for violations.</p>
+    ${H('13. Governing law')}<p>These Terms are governed by the laws of the State of Illinois, without regard to conflict-of-laws rules.</p>`);
+  if(which==='privacy')return legalWrap('Privacy Policy',
+    `<p>This policy explains what Radiator collects, how we use it, and your choices.</p>
+    ${H('What we collect')}<p><b>Content you post:</b> reviews, maintenance issues, questions, building names, and photos. Please don't include personal contact details — we automatically strip obvious phone numbers and emails from submitted text, but you should not rely on it. <b>Profile info:</b> a display handle you choose, and (if you buy access) payment details handled by our payment processor — we do not store full card numbers. <b>Basic technical data:</b> IP address and request information, used for security, rate-limiting, and preventing abuse.</p>
+    ${H('What we do NOT try to collect')}<p>Radiator is designed to show tenant experience in aggregate. We ask you not to submit other people's personal information, unit numbers, or the names of individuals who aren't the landlord/management company.</p>
+    ${H('How we use it')}<p>To operate Radiator (display shared reviews and records, run give-to-get and paid access, keep the service secure), to moderate content and enforce our Community Guidelines, and to respond to reports, corrections, and support requests.</p>
+    ${H('How content is shared')}<p>Reviews, issues, questions, names, and photos you post are <b>public</b> — shown to everyone who uses Radiator. Post accordingly. Your display handle appears with your content; your email is not shown publicly.</p>
+    ${H('Payment data')}<p>Payments are processed by Stripe. Their handling of card data is governed by their privacy policy. We receive only limited information (e.g. that a payment succeeded and its status).</p>
+    ${H('Retention')}<p>We keep content while it's live on Radiator. You can request removal of content you posted, and we'll honor reasonable requests unless we must keep it for legal reasons.</p>
+    ${H('Your choices and rights')}<p>You can edit or request removal of your content and account. Depending on where you live, you may have rights to access, correct, or delete your personal data — contact us and we'll respond.</p>
+    ${H('Children')}<p>Radiator is not directed to children under 18 and we don't knowingly collect their data.</p>
+    ${H('Security')}<p>We use reasonable measures to protect data, but no system is perfectly secure.</p>`);
+  return legalWrap('Community Guidelines',
+    `<p>Radiator exists to put honest, useful information in renters' hands. These rules keep it trustworthy and fair to everyone — tenants and landlords alike.</p>
+    ${H('Write from real experience')}<p>Only review a building or unit you have actually lived in, applied to, toured, or otherwise have firsthand knowledge of. Radiator is for real tenant experience, not rumor or secondhand stories.</p>
+    ${H('Be specific, and separate fact from opinion')}<p>The most helpful reviews describe what happened: "The heat was out for six days in January and it took three calls to get it fixed." That's more useful — and safer — than a bare insult. Share your honest opinion, but ground it in your experience.</p>
+    ${H('What you may not post')}<p>• <b>Personal information</b> — no phone numbers, emails, home addresses of individuals, apartment/unit numbers, or other private details of any person. • <b>Names of individuals</b> who aren't the landlord/management company (e.g. don't name a maintenance worker, leasing agent, or another tenant). • <b>Harassment, threats, or doxxing</b> of anyone. • <b>Discriminatory content</b> — no attacks based on race, ethnicity, religion, national origin, disability, family status, sexual orientation, gender identity, or source of income. • <b>Retaliation or fake reviews</b> — don't post reviews you know to be false; landlords may not post fake positive reviews of their own buildings or fake negative reviews of competitors. • <b>Illegal content, spam, or advertising.</b></p>
+    ${H('Official records are reports, not verdicts')}<p>City of Chicago violation and complaint data reflects what has been reported to or recorded by the city. A recorded complaint is not proof of wrongdoing, and an open violation may already be in the process of being fixed.</p>
+    ${H('Landlords and management: right of reply')}<p>If you own or manage a building on Radiator, you can respond publicly to reviews and request corrections of factual errors through the reporting tools. We take good-faith correction requests seriously.</p>
+    ${H('Reporting and moderation')}<p>Anyone can flag a review, issue, question, or photo with the <b>Report</b> control. Flagged content is reviewed against these guidelines and may be removed. We may remove content, and limit or remove accounts, that violate these rules.</p>`);
+}
+
 /* ============ EXPLORE ============ */
 function viewHome(){
   const total=REAL.length.toLocaleString();
@@ -953,7 +1035,7 @@ function viewHome(){
       <button class="btn" onclick="go('write',null)">＋ Write a review</button>
     </div>
     <div style="margin-top:26px">${signupBox('home')}</div>
-    <div class="landing-foot">RADIATOR · CHECK IT BEFORE YOU SIGN · CHICAGO · <a onclick="tab('pricing')">See pricing</a></div>
+    <div class="landing-foot">RADIATOR · CHECK IT BEFORE YOU SIGN · CHICAGO · <a onclick="tab('pricing')">Pricing</a> · <a onclick="tab('terms')">Terms</a> · <a onclick="tab('privacy')">Privacy</a> · <a onclick="tab('guidelines')">Guidelines</a></div>
   </div>`;
 }
 function viewPricing(){const access=hasAccess();
@@ -1151,6 +1233,7 @@ function viewBuilding(bid){const b=bById(bid);if(!b)return '<div class="empty">B
       ${gallery}
       ${reviewsSection(b)}
       ${aroundWebCard(webName,false)}
+      ${(!b.demo)?neighborhoodWebCard(b.hood):''}
       <div class="card"><div class="card-b">${signupBox('building')}</div></div>
       ${qaBlock}
     </div>
@@ -1301,6 +1384,7 @@ function viewNeighborhood(name){const h=HOOD_STATS.find(x=>x.hood===name);const 
   if(!h)return '<div class="empty">Neighborhood not found</div>';
   return `<div class="acct-hero"><div class="av" style="background:var(--azure)">📍</div><div><div class="h">${esc(name)}</div><div class="s">${h.n} tracked building${h.n===1?'':'s'} · ${h.avgOpen} avg open violations</div></div></div>
   <div class="statgrid" style="margin-top:16px"><div class="statbox"><div class="n" style="color:var(--risk)">${h.high}</div><div class="k">High risk</div></div><div class="statbox"><div class="n" style="color:var(--watch)">${h.watch}</div><div class="k">Watch list</div></div><div class="statbox"><div class="n" style="color:var(--good)">${h.good}</div><div class="k">Good standing</div></div></div>
+  <div style="margin-top:16px">${neighborhoodWebCard(name)}</div>
   <div class="section-t">Buildings, cleanest first</div><div class="bgrid">${bs.map(bcard).join('')}</div>`;
 }
 
