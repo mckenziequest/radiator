@@ -22,7 +22,8 @@
   --heat:#F26B3A; --heat-deep:#C24634; --heat-soft:#FBE3D6; --brand2:#F59E2E;
   --brand-grad:linear-gradient(150deg,#F59E2E,#F26B3A 55%,#E0574A);
   --azure:#3B6FA0; --azure-deep:#2E587F; --azure-soft:#EAF0F6;
-  --paper:#FFF8F2; --surface:#FFFFFF; --surface-2:#F3E7DC; --surface-3:#EDE4DA;
+  --paper:#FFF8F2; --surface:#FFFFFF; --surface-2:#F3E7DC; --surface-3:#EDE4DA; --dial-track:rgba(60,30,15,0.08);
+  --desk:#E7DCCE; --sidebar-bg:#FFFDFA; --content-bg:#F7F0E7; --flag:#4DA9DF;
   --ink:#2A2320; --ink-soft:#6F645B; --ink-faint:#A08B7D;
   --line:rgba(60,30,15,0.10); --line-strong:rgba(60,30,15,0.17);
   --good:#2F7D58; --good-soft:#EEF6F0;
@@ -40,7 +41,8 @@
 :root:not([data-theme="light"]){ @media (prefers-color-scheme:dark){
   --heat:#F26B3A; --heat-deep:#F0895A; --heat-soft:rgba(242,107,58,0.18);
   --azure:#6BA8E0; --azure-deep:#8FC0EC; --azure-soft:rgba(107,168,224,0.16);
-  --paper:#211B18; --surface:#2C2521; --surface-2:#332A25; --surface-3:#3C322C;
+  --paper:#211B18; --surface:#2C2521; --surface-2:#332A25; --surface-3:#3C322C; --dial-track:rgba(255,255,255,0.09);
+  --desk:#191410; --sidebar-bg:#26201C; --content-bg:#211B18; --flag:#6BA8E0;
   --ink:#F5EDE6; --ink-soft:#B7A99E; --ink-faint:#9A8B80;
   --line:rgba(255,255,255,0.08); --line-strong:rgba(255,255,255,0.15);
   --good:#6FD3A0; --good-soft:rgba(55,148,106,0.20); --watch:#F5C956; --watch-soft:rgba(224,163,46,0.20); --risk:#F0897C; --risk-soft:rgba(224,87,74,0.20);
@@ -49,7 +51,8 @@
 :root[data-theme="dark"]{
   --heat:#F26B3A; --heat-deep:#F0895A; --heat-soft:rgba(242,107,58,0.18);
   --azure:#6BA8E0; --azure-deep:#8FC0EC; --azure-soft:rgba(107,168,224,0.16);
-  --paper:#211B18; --surface:#2C2521; --surface-2:#332A25; --surface-3:#3C322C;
+  --paper:#211B18; --surface:#2C2521; --surface-2:#332A25; --surface-3:#3C322C; --dial-track:rgba(255,255,255,0.09);
+  --desk:#191410; --sidebar-bg:#26201C; --content-bg:#211B18; --flag:#6BA8E0;
   --ink:#F5EDE6; --ink-soft:#B7A99E; --ink-faint:#9A8B80;
   --line:rgba(255,255,255,0.08); --line-strong:rgba(255,255,255,0.15);
   --good:#6FD3A0; --good-soft:rgba(55,148,106,0.20); --watch:#F5C956; --watch-soft:rgba(224,163,46,0.20); --risk:#F0897C; --risk-soft:rgba(224,87,74,0.20);
@@ -57,7 +60,14 @@
 }
 *{box-sizing:border-box}
 html,body{margin:0}
-body{background:var(--paper); color:var(--ink); font-family:var(--sans); font-size:15px; line-height:1.5; -webkit-font-smoothing:antialiased}
+body{background:var(--desk); color:var(--ink); font-family:var(--sans); font-size:15px; line-height:1.5; -webkit-font-smoothing:antialiased}
+/* niche-style accents */
+.fstar{display:inline-block; background:var(--flag); clip-path:polygon(50% 0%,63% 25%,90% 25%,70% 50%,90% 75%,63% 75%,50% 100%,37% 75%,10% 75%,30% 50%,10% 25%,37% 25%); vertical-align:middle; flex-shrink:0}
+.squig{display:block; margin:6px 0 12px; height:11px; width:104px; color:var(--heat)}
+.squig.blue{color:var(--flag)}
+.blob{position:absolute; background:#FBD9A6; border-radius:52% 48% 46% 54% / 60% 60% 42% 42%; pointer-events:none}
+:root:not([data-theme="light"]) .blob{opacity:.32}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .blob{opacity:.32}}
 h1,h2,h3,.page-t,.brand .wm,.sb-brand .wm,.mob-brand .wm,.rail-score .grade,.rail-score .num,.scorechip .n,.hero .htext .name,.acct-hero .h,.statbox .n,.summary .big,.calc-out .big,.cbox .n,.access-card .big{font-family:var(--display); letter-spacing:-0.02em; font-weight:800}
 .rail-score .grade{letter-spacing:-0.03em}
 button{font-family:inherit; cursor:pointer; border:none; background:none; color:inherit}
@@ -67,8 +77,8 @@ a{color:var(--azure-deep); cursor:pointer}
 img{max-width:100%; display:block}
 
 /* ---------- shell ---------- */
-.shell{max-width:1320px; margin:0 auto; display:grid; grid-template-columns:252px minmax(0,1fr); min-height:100vh; background:var(--paper)}
-.sidebar{position:sticky; top:0; align-self:start; height:100vh; border-right:1px solid var(--line); background:var(--surface);
+.shell{max-width:1320px; margin:0 auto; display:grid; grid-template-columns:252px minmax(0,1fr); min-height:100vh; background:var(--content-bg)}
+.sidebar{position:sticky; top:0; align-self:start; height:100vh; border-right:1px solid var(--line); background:var(--sidebar-bg);
   display:flex; flex-direction:column; padding:20px 14px; gap:4px; overflow-y:auto}
 .sb-brand{display:flex; align-items:center; gap:9px; padding:6px 8px 16px}
 .sb-brand svg{width:28px; height:28px}
@@ -169,6 +179,10 @@ h1.page-t{font-size:1.65rem; font-weight:900; letter-spacing:-.02em; margin:2px 
 .bprofile{display:grid; grid-template-columns:minmax(0,1fr) 336px; gap:22px; align-items:start}
 @media(max-width:960px){.bprofile{grid-template-columns:1fr}}
 .hero{position:relative; height:172px; display:flex; align-items:flex-end; padding:18px; border-radius:var(--r); overflow:hidden}
+.gradeseal{position:absolute; top:16px; right:18px; width:74px; height:74px; background:var(--flag); clip-path:polygon(50% 0%,61% 13%,78% 8%,78% 26%,95% 30%,85% 45%,100% 58%,83% 63%,87% 82%,69% 78%,62% 95%,50% 83%,38% 95%,31% 78%,13% 82%,17% 63%,0% 58%,15% 45%,5% 30%,22% 26%,22% 8%,39% 13%); display:grid; place-items:center; transform:rotate(-8deg); box-shadow:0 12px 24px -12px rgba(29,105,150,0.7); z-index:3}
+.gradeseal .gg{font-family:var(--display); font-weight:800; font-size:22px; color:#0E3A54; line-height:1}
+.gradeseal .gt{font-family:var(--mono); font-size:7px; color:#0E3A54; letter-spacing:.05em; margin-top:1px}
+.hero-waves{position:absolute; inset:0; width:100%; height:100%; opacity:.4; pointer-events:none; z-index:1}
 .hero .hero-emoji{position:absolute; right:18px; top:16px; font-size:46px; opacity:.9}
 .hero .grad{position:absolute; inset:0; background:linear-gradient(180deg,transparent 30%,rgba(0,0,0,.62))}
 .hero .htext{position:relative; color:#fff; text-shadow:0 1px 12px rgba(0,0,0,.4)}
@@ -240,12 +254,45 @@ h1.page-t{font-size:1.65rem; font-weight:900; letter-spacing:-.02em; margin:2px 
 /* right rail */
 .rail-score{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); box-shadow:var(--shadow-sm); padding:20px; text-align:center}
 .rail-score .grade{width:76px; height:76px; margin:0 auto 10px; border-radius:20px; display:grid; place-items:center; font-size:2.3rem; font-weight:900; color:#fff}
-.dial{width:104px; height:104px; margin:0 auto 12px; border-radius:50%; display:grid; place-items:center;
-  background:conic-gradient(from 180deg, var(--tier,#F26B3A) var(--sweep,0deg), var(--surface-3) 0);}
-.dial .dial-in{width:80px; height:80px; border-radius:50%; background:var(--surface); display:grid; place-items:center; box-shadow:var(--shadow-sm)}
+.dial{width:104px; height:104px; margin:0 auto 12px; border-radius:50%; display:grid; place-items:center; flex-shrink:0;
+  background:var(--grad, conic-gradient(from 180deg, var(--tier,#F26B3A) var(--sweep,0deg), var(--dial-track) 0));}
+.dial .dial-in{width:78%; height:78%; border-radius:50%; background:var(--surface); display:grid; place-items:center; box-shadow:var(--shadow-sm); text-align:center; line-height:1}
 .dial .dial-g{font-family:var(--display); font-weight:800; font-size:2rem; letter-spacing:-0.03em; color:var(--ink); line-height:1}
+.dial .dial-n{font-family:var(--display); font-weight:800; letter-spacing:-0.03em; color:var(--ink); line-height:0.95}
+.dial .dial-lbl{font-family:var(--mono); color:var(--ink-faint); letter-spacing:.08em; line-height:1; margin-top:1px}
+.dial-badge{position:absolute; top:10px; left:10px; border-radius:50%; box-shadow:0 4px 12px -4px rgba(60,30,15,.55), 0 0 0 3px rgba(255,255,255,.85)}
+:root:not([data-theme="light"]) .dial-badge{box-shadow:0 4px 12px -4px rgba(0,0,0,.6), 0 0 0 3px rgba(44,37,33,.9)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .dial-badge{box-shadow:0 4px 12px -4px rgba(0,0,0,.6), 0 0 0 3px rgba(44,37,33,.9)}}
+.gpill{display:inline-flex; align-items:center; justify-content:center; min-width:22px; height:20px; padding:0 7px; border-radius:999px; font-family:var(--display); font-weight:800; font-size:12px; line-height:1}
+.gpill.gA,.gpill.gB{background:var(--good-soft); color:var(--good)} .gpill.gC{background:var(--watch-soft); color:var(--watch)} .gpill.gD,.gpill.gF{background:var(--risk-soft); color:var(--risk)}
 .rail-score .num{font-size:1.05rem; font-weight:800} .rail-score .num small{color:var(--ink-faint); font-weight:600}
 .rail-score .lbl{font-family:var(--mono); font-size:11px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.06em; margin-top:3px}
+/* review sub-score sliders */
+.dim-slider{display:grid; grid-template-columns:1fr; gap:5px}
+.dim-slider .dh{display:flex; justify-content:space-between; align-items:center; font-size:13.5px; color:var(--ink-soft); font-weight:600}
+.dim-slider .dh .dv{font-family:var(--mono); font-weight:700; font-variant-numeric:tabular-nums}
+.dim-slider .dh .dv.set{color:var(--heat-deep)} .dim-slider .dh .dv.unset{color:var(--ink-faint)}
+.dim-slider input[type=range]{-webkit-appearance:none; appearance:none; width:100%; height:8px; border-radius:5px; background:var(--surface-3); outline:none; cursor:pointer; margin:2px 0}
+.dim-slider input[type=range].on{background:linear-gradient(90deg,#4DA9DF,var(--tc,var(--heat)) var(--fill,50%),var(--surface-3) var(--fill,50%))}
+.dim-slider input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; appearance:none; width:20px; height:20px; border-radius:50%; background:#fff; border:2px solid var(--heat); box-shadow:0 2px 6px rgba(60,30,15,.35); cursor:pointer}
+.dim-slider input[type=range]::-moz-range-thumb{width:18px; height:18px; border-radius:50%; background:#fff; border:2px solid var(--heat); box-shadow:0 2px 6px rgba(60,30,15,.35); cursor:pointer}
+/* map callout + zoom */
+.mapbox{position:relative}
+.mapzoom{position:absolute; top:12px; right:12px; display:flex; flex-direction:column; gap:6px; z-index:5}
+.mapzoom button{width:34px; height:34px; border-radius:10px; border:1px solid var(--line); background:var(--surface); color:var(--ink); font-size:19px; font-weight:700; line-height:1; cursor:pointer; box-shadow:var(--shadow-sm); display:grid; place-items:center}
+.mapzoom button:hover{background:var(--surface-2)}
+#map-main{overflow:auto; -webkit-overflow-scrolling:touch}
+#map-main svg{transition:width .18s ease, height .18s ease; display:block; margin:0 auto}
+.mapcallout{position:absolute; left:12px; bottom:12px; max-width:280px; background:var(--surface); border:1px solid var(--line); border-radius:16px; box-shadow:0 20px 50px -22px rgba(60,30,15,.55); padding:14px; display:none; z-index:6; animation:calloutIn .16s ease}
+.mapcallout.show{display:block}
+@keyframes calloutIn{from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:none}}
+.mapcallout .co-head{display:flex; gap:12px; align-items:center}
+.mapcallout .co-name{font-family:var(--display); font-weight:800; font-size:15px; letter-spacing:-0.02em; line-height:1.15}
+.mapcallout .co-sub{font-size:12px; color:var(--ink-soft); margin-top:2px}
+.mapcallout .co-stats{display:flex; gap:6px; flex-wrap:wrap; margin:10px 0; font-family:var(--mono); font-size:11px}
+.mapcallout .co-stats span{background:var(--surface-2); color:var(--ink-soft); padding:3px 8px; border-radius:6px}
+.mapcallout .co-close{position:absolute; top:8px; right:11px; border:none; background:none; color:var(--ink-faint); font-size:19px; line-height:1; cursor:pointer}
+.bpin.sel path{stroke-width:2; filter:drop-shadow(0 3px 5px rgba(60,30,15,.5))}
 .rail-actions{display:grid; gap:9px; margin-top:14px}
 .gallery{display:flex; gap:9px; overflow-x:auto; padding:2px; scrollbar-width:none}
 .gallery::-webkit-scrollbar{display:none}
@@ -340,7 +387,8 @@ details.res-wrap>summary::-webkit-details-marker{display:none}
 .chiprow{display:flex;gap:7px;flex-wrap:wrap}
 .chiptog{font-size:12.5px;font-weight:600;padding:7px 12px;border-radius:999px;border:1.5px solid var(--line-strong);background:var(--surface);color:var(--ink-soft)}
 .chiptog.on{background:var(--heat);color:#fff;border-color:var(--heat)}
-.mini-dims{display:grid;gap:10px}
+.mini-dims{display:grid;grid-template-columns:1fr 1fr;gap:16px 26px}
+@media(max-width:560px){.mini-dims{grid-template-columns:1fr}}
 .mini-dims .md{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .mini-dims .md .l{font-size:13px;color:var(--ink-soft);font-weight:600}
 
@@ -454,6 +502,105 @@ table.cmp td.big{font-weight:800; font-variant-numeric:tabular-nums; font-family
 /* landing */
 .landing{max-width:1000px;margin:0 auto}
 .hero-land{text-align:center;padding:44px 22px 30px;background:radial-gradient(120% 100% at 50% 0%, color-mix(in srgb,var(--brand2) 13%, var(--paper)), var(--paper) 62%);border-radius:26px;margin-top:6px}
+/* ===== marketing landing page ===== */
+.landing-page{min-height:100vh;background:var(--paper);color:var(--ink)}
+.land-nav{max-width:1180px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:18px 32px}
+.land-nav .ln-brand{display:flex;align-items:center;gap:10px}
+.land-nav .ln-brand svg{width:30px;height:30px}
+.land-nav .ln-brand .wm{font-family:var(--display);font-weight:800;font-size:1.4rem;letter-spacing:-.03em}
+.land-nav .ln-links{display:flex;align-items:center;gap:24px;font-size:14px;color:var(--ink-soft)}
+.land-nav .ln-links a{color:var(--ink-soft);cursor:pointer;text-decoration:none}
+.land-nav .ln-links a.signin{color:var(--ink);font-weight:700}
+.land-nav .ln-links a.cta{background:var(--heat);color:#fff;padding:9px 17px;border-radius:999px;font-weight:600;box-shadow:0 8px 18px -8px rgba(226,87,50,.6)}
+@media(max-width:720px){.land-nav .ln-links a:not(.cta){display:none}}
+.land-wrap{max-width:1180px;margin:0 auto;padding:0 32px}
+.land-hero{position:relative;display:grid;grid-template-columns:1.05fr .95fr;gap:40px;align-items:center;padding:40px 0 26px}
+.land-eyebrow{font-family:var(--mono);font-size:13px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--heat-deep);display:inline-flex;align-items:center;gap:8px}
+.land-title{font-family:var(--display);font-weight:800;font-size:clamp(34px,4.4vw,58px);letter-spacing:-0.04em;line-height:1.0;margin:14px 0 0;color:var(--ink)}
+.land-sub{font-size:16px;line-height:1.6;color:var(--ink-soft);margin:2px 0 24px;max-width:460px}
+.land-search{display:flex;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:8px 8px 8px 18px;box-shadow:0 18px 44px -24px rgba(60,30,15,.5);max-width:520px}
+.land-search input{flex:1;border:none;outline:none;background:none;font-size:16px;color:var(--ink);font-family:var(--sans)}
+.land-search .dot{width:8px;height:8px;border-radius:50%;background:var(--heat);align-self:center;flex-shrink:0;margin-right:8px}
+.land-search .hs-btn{background:var(--heat);color:#fff;padding:12px 24px;border-radius:11px;font-weight:600;border:none;cursor:pointer;white-space:nowrap;font-family:var(--sans)}
+.land-chips{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+.land-chips button{background:var(--surface);border:1px solid var(--line);padding:6px 13px;border-radius:999px;font-size:13px;color:var(--ink-soft);cursor:pointer;font-family:var(--sans)}
+.land-trust{display:flex;gap:28px;padding:16px 0 6px;margin-top:6px;border-top:1px solid var(--line);font-family:var(--mono);font-size:12px;color:var(--ink-faint);flex-wrap:wrap}
+.land-trust .lead{display:inline-flex;align-items:center;gap:8px;color:var(--flag)}
+.land-collage{position:relative;height:360px}
+.lp-arc{position:absolute;bottom:-6px;left:8px;pointer-events:none}
+.lp-photo{position:absolute;overflow:hidden;border:4px solid var(--surface);background-size:cover}
+.lp-photo.sm{top:6px;left:6px;width:110px;height:150px;border-radius:14px;box-shadow:0 20px 40px -20px rgba(60,30,15,.6);background:repeating-linear-gradient(52deg,#b39a86,#b39a86 10px,#c1a894 10px,#c1a894 20px);transform:rotate(-9deg)}
+.lp-photo.lg{top:14px;right:0;width:210px;height:280px;border-radius:16px;border-width:5px;box-shadow:0 30px 56px -22px rgba(60,30,15,.65);background:repeating-linear-gradient(48deg,#a98f7c,#a98f7c 11px,#b89e8b 11px,#b89e8b 22px);transform:rotate(4deg)}
+.lp-photo .scrim{position:absolute;inset:0;background:linear-gradient(180deg,rgba(40,22,16,.5) 0%,rgba(40,22,16,0) 34%)}
+.lp-photo .cap{position:absolute;font-family:var(--mono);font-size:9px;letter-spacing:.06em;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.5)}
+.lp-seal{position:absolute;top:-6px;right:-6px;width:82px;height:82px;background:var(--flag);clip-path:polygon(50% 0%,61% 13%,78% 8%,78% 26%,95% 30%,85% 45%,100% 58%,83% 63%,87% 82%,69% 78%,62% 95%,50% 83%,38% 95%,31% 78%,13% 82%,17% 63%,0% 58%,15% 45%,5% 30%,22% 26%,22% 8%,39% 13%);display:grid;place-items:center;transform:rotate(10deg);box-shadow:0 10px 22px -10px rgba(29,105,150,.7);text-align:center}
+.lp-seal span{font-family:var(--mono);font-size:8px;font-weight:700;color:#0E3A54;line-height:1.15;letter-spacing:.04em}
+.lp-dialcard{position:absolute;bottom:8px;left:-10px;background:var(--surface);border-radius:16px;padding:14px 16px;box-shadow:0 30px 60px -22px rgba(60,30,15,.6);display:flex;align-items:center;gap:12px}
+.lp-dialcard .k{font-family:var(--mono);font-size:9px;letter-spacing:.1em;color:var(--ink-faint)}
+.lp-dialcard .n{font-family:var(--display);font-weight:700;font-size:15px;margin:2px 0 5px;color:var(--ink)}
+@media(max-width:820px){.land-hero{grid-template-columns:1fr}.land-collage{display:none}}
+@media(max-width:720px){.land-wrap{padding:0 18px}.land-nav{padding:16px 18px}.land-title{font-size:33px}.land-sec{padding:30px 20px}.landing-page{padding-bottom:76px}}
+/* landing sections */
+.land-sec{background:var(--surface);border-radius:26px;margin:8px 0;padding:40px 32px}
+.land-why{text-align:center}
+.land-why .land-eyebrow{color:var(--heat-deep)}
+.land-why h2{font-family:var(--display);font-weight:800;font-size:clamp(26px,3.2vw,34px);letter-spacing:-.03em;margin:12px 0 0;color:var(--ink)}
+.land-why .sq{display:flex;justify-content:center}
+.land-why p.lead{font-size:16px;color:var(--ink-soft);max-width:560px;margin:6px auto 30px;line-height:1.55}
+.feat3.center{max-width:1000px;margin:0 auto}
+.feat3.center .fcard{text-align:center;border:none;box-shadow:none;background:none;padding:6px 16px}
+.feat3.center .fic-tile{margin:0 auto 14px;width:56px;height:56px;border-radius:50%}
+.feat3.center .feb{font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px}
+/* give-to-get band */
+.land-g2g{position:relative;margin-top:20px;background:#2A211C;color:#F5EDE6;border-radius:0 0 24px 24px;padding:44px 32px 54px;text-align:center;overflow:hidden}
+.land-g2g .eb{font-family:var(--mono);font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:#F5C33B;font-weight:700}
+.land-g2g h2{font-family:var(--display);font-weight:800;font-size:clamp(28px,3.4vw,36px);letter-spacing:-.03em;margin:12px 0 14px;color:#FFF3EA}
+.land-g2g p{font-size:16px;line-height:1.55;color:#cdbfb5;max-width:520px;margin:0 auto 26px}
+.land-g2g .g2g-cta{display:inline-block;background:var(--heat);color:#fff;padding:14px 28px;border-radius:999px;font-weight:700;font-size:15px;border:none;cursor:pointer;box-shadow:0 14px 30px -10px rgba(226,87,50,.7)}
+.lp-badges{display:flex;justify-content:center;gap:clamp(28px,6vw,60px);margin-top:40px;flex-wrap:wrap}
+.lp-badge{text-align:center}
+.lp-badge .st{width:74px;height:74px;margin:0 auto 10px;background:#F5EDE6;clip-path:polygon(50% 0%,61% 13%,78% 8%,78% 26%,95% 30%,85% 45%,100% 58%,83% 63%,87% 82%,69% 78%,62% 95%,50% 83%,38% 95%,31% 78%,13% 82%,17% 63%,0% 58%,15% 45%,5% 30%,22% 26%,22% 8%,39% 13%);display:grid;place-items:center;font-family:var(--display);font-weight:800;color:var(--heat);line-height:1.05}
+.lp-badge .cap{font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:#b7a99e}
+.land-foot{max-width:1180px;margin:0 auto;padding:26px 32px 40px;font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--ink-faint);text-align:center}
+.land-foot a{color:var(--ink-faint);cursor:pointer}
+/* home neighborhood band */
+.hnb-head{display:flex;justify-content:space-between;align-items:baseline;margin:30px 2px 14px}
+.hnb-head h3{font-family:var(--display);font-weight:700;font-size:1.35rem;letter-spacing:-.02em;margin:0}
+.hnb-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+@media(max-width:820px){.hnb-grid{grid-template-columns:repeat(2,1fr)}}
+.hnb-card{position:relative;height:140px;border-radius:16px;overflow:hidden;border:none;cursor:pointer;text-align:left;padding:0}
+.hnb-card .g{position:absolute;inset:0;background:linear-gradient(180deg,rgba(26,20,26,0) 30%,rgba(26,20,26,0.82))}
+.hnb-card .t{position:absolute;left:14px;bottom:12px;color:#fff}
+.hnb-card .t .nm{font-family:var(--display);font-weight:700;font-size:16px}
+.hnb-card .t .s{font-family:var(--mono);font-size:10px;opacity:.85}
+/* feature card icon tiles */
+.fcard{position:relative;overflow:hidden}
+.fic-tile{position:relative;width:44px;height:44px;border-radius:12px;display:grid;place-items:center;margin-bottom:14px}
+/* explore split: list rows + inline map */
+.exp-eyebrow{font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--flag);display:inline-flex;align-items:center;gap:8px}
+.exp-title{font-family:var(--display);font-weight:800;font-size:1.7rem;letter-spacing:-.02em;margin:8px 0 0}
+.exp-split{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:18px;overflow:hidden;background:var(--surface);min-height:520px;margin-top:6px}
+@media(max-width:900px){.exp-split{grid-template-columns:1fr}.exp-split .exp-map{display:none}}
+.exp-list{padding:16px;display:flex;flex-direction:column;gap:12px;border-right:1px solid var(--line);overflow:auto;max-height:80vh}
+.exp-map{position:relative;background:linear-gradient(180deg,var(--surface-2),var(--surface))}
+.exp-map>#exp-map{position:absolute;inset:0;overflow:auto}
+.exp-map>#exp-map svg{width:100%;height:auto;display:block}
+.blrow{display:flex;gap:16px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px;cursor:pointer;text-align:left;position:relative;transition:box-shadow .15s,border-color .15s;width:100%;font:inherit;color:inherit}
+.blrow:hover{box-shadow:var(--shadow-sm)}
+.blrow.incmp{border-color:var(--heat);box-shadow:0 8px 24px -14px rgba(226,87,50,.5)}
+.blrow-main{flex:1;min-width:0}
+.blrow-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.blrow-top .nm{font-family:var(--display);font-weight:800;font-size:16px;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.blrow-sub{font-size:13px;color:var(--ink-soft);margin:3px 0 8px}
+.blrow-chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-family:var(--mono);font-size:11px}
+.ec{background:var(--surface-3);color:var(--ink-soft);padding:3px 8px;border-radius:6px;white-space:nowrap}
+.ec.good{background:var(--good-soft);color:var(--good)} .ec.risk{background:var(--risk-soft);color:var(--risk)}
+.cmp-sm{margin-left:auto;background:none;border:1px solid var(--line);color:var(--ink-soft);padding:3px 9px;border-radius:999px;font-family:var(--sans);font-size:11px;font-weight:600;cursor:pointer}
+.cmp-sm.on{background:var(--heat-soft);border-color:var(--heat);color:var(--heat-deep)}
+.exp-maplegend{position:absolute;bottom:12px;left:12px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;box-shadow:var(--shadow-sm);font-family:var(--mono);font-size:11px;z-index:4}
+.exp-maplegend .row{display:flex;gap:12px;margin-top:6px}
+.exp-maplegend .row span{display:inline-flex;align-items:center;gap:5px;color:var(--ink-soft)}
+.exp-maplegend i{width:9px;height:9px;border-radius:50%}
 .hero-eyebrow{font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.13em;color:var(--heat-deep);background:var(--heat-soft);padding:6px 14px;border-radius:999px;display:inline-block}
 .hero-title{font-family:var(--display);font-size:clamp(2.2rem,6vw,3.7rem);font-weight:800;letter-spacing:-.03em;line-height:1.02;margin:22px auto 14px;max-width:17ch;text-wrap:balance}
 .hero-title .clip{background:linear-gradient(100deg,#F59E2E,#F26B3A 60%,#E0574A);-webkit-background-clip:text;background-clip:text;color:transparent}
@@ -741,48 +888,10 @@ function dedupById(primary,extra){const seen={};primary.forEach(x=>seen[x.id]=1)
 /* derived */
 let _rCache={},_sCache={},_extCache={},_extPending={};
 function clearCaches(){_rCache={};_sCache={};}
-/* Photos survive refresh: a small localStorage cache of {photos, website} per building,
-   so galleries & card covers repopulate instantly instead of waiting for a re-fetch. */
-const PHOTO_LS='radiator.photos.v1', PHOTO_TTL=7*24*3600*1000, PHOTO_MAX=150;
-let _phMem=null;
-function _ph(){if(_phMem)return _phMem;try{_phMem=JSON.parse(localStorage.getItem(PHOTO_LS)||'{}')||{};}catch(e){_phMem={};}return _phMem;}
-function phRemember(bid,photos,website){try{const m=_ph();m[bid]={p:Array.isArray(photos)?photos.slice(0,8):[],w:website||null,t:Date.now()};
-  const ks=Object.keys(m);if(ks.length>PHOTO_MAX){ks.sort((a,b)=>(m[a].t||0)-(m[b].t||0)).slice(0,ks.length-PHOTO_MAX).forEach(k=>delete m[k]);}
-  localStorage.setItem(PHOTO_LS,JSON.stringify(m));}catch(e){}}
-function phRecall(bid){const e=_ph()[bid];return (e&&Array.isArray(e.p)&&Date.now()-(e.t||0)<PHOTO_TTL)?e:null;}
-/* Guaranteed cover photo: the Street View proxy works for ~every address with no
-   per-building API roundtrip, so cards & heroes auto-populate on first paint. */
-function svPhoto(b){const base=comBase();if(base===null||!b||b.demo||!b.addr)return null;return base+'/api/streetview?address='+encodeURIComponent(b.addr);}
 function apiBase(){try{return (localStorage.getItem('radiator.apiBase')||'').trim();}catch(e){return '';}}
-function fetchExt(b){const base=comBase();if(base===null||b.demo)return;const bid=b.id;if(_extCache[bid]!==undefined||_extPending[bid])return;_extPending[bid]=true;const r=ratingOf(bid);
+function fetchExt(b){const base=apiBase();if(!base||b.demo)return;const bid=b.id;if(_extCache[bid]!==undefined||_extPending[bid])return;_extPending[bid]=true;const r=ratingOf(bid);
   const url=base.replace(/\/+$/,'')+'/api/building?address='+encodeURIComponent(b.addr)+(r.n?('&radiatorRating='+r.avg.toFixed(2)+'&radiatorCount='+r.n):'');
-  fetch(url).then(x=>x.ok?x.json():Promise.reject('HTTP '+x.status)).then(j=>{_extCache[bid]=j;delete _extPending[bid];if(j&&!j.error)phRemember(bid,j.photos||[],j.website||null);if(nav.view==='building'&&nav.id===bid)render();}).catch(e=>{_extCache[bid]={error:String(e)};delete _extPending[bid];});}
-/* Real City of Chicago building-violation records for this address (live lookup). */
-let _violCache={},_violPending={};
-function fetchViol(b){const base=comBase();if(base===null||b.demo)return;const bid=b.id;if(_violCache[bid]!==undefined||_violPending[bid])return;_violPending[bid]=true;
-  fetch(base.replace(/\/+$/,'')+'/api/violations?address='+encodeURIComponent(b.addr)).then(x=>x.ok?x.json():Promise.reject('HTTP '+x.status)).then(j=>{_violCache[bid]=j;delete _violPending[bid];if(nav.view==='building'&&nav.id===bid)render();}).catch(e=>{_violCache[bid]={error:String(e)};delete _violPending[bid];});}
-let violSort='new',violSortFor=null,violShowAll=false,violShowAllFor=null;
-function setViolSort(v,bid){violSort=v;violSortFor=bid;render();}
-function toggleViolAll(bid){violShowAll=!(violShowAllFor===bid&&violShowAll);violShowAllFor=bid;render();}
-function violationsCard(b){if(b.demo)return '';const bid=b.id;fetchViol(b);const v=_violCache[bid];
-  const wrap=inner=>`<div class="card"><div class="card-h"><span class="t">📋 Violation history</span></div><div class="card-b">${inner}</div></div>`;
-  if(v===undefined)return wrap('<p class="small-note" style="padding:6px 0">Loading City of Chicago violation records…</p>');
-  if(v.error||!v.violations||!v.violations.length)return wrap('<p class="small-note" style="padding:6px 0">No itemized violation records on file for this exact address in the City dataset.</p>');
-  const cap=s=>{s=String(s||'').toLowerCase();return s.charAt(0).toUpperCase()+s.slice(1);};
-  const clip=(s,n)=>{s=String(s||'');return s.length>n?s.slice(0,n-1)+'…':s;};
-  const isOpen=x=>!/COMPLIED|CLOSED|NO ENTRY/i.test(x.status);
-  const srt=(violSortFor===bid)?violSort:'new';
-  let ordered=v.violations.slice();
-  if(srt==='old')ordered.sort((a,c)=>(a.date||'').localeCompare(c.date||''));
-  else if(srt==='open')ordered.sort((a,c)=>(isOpen(c)-isOpen(a))||((c.date||'').localeCompare(a.date||'')));
-  else ordered.sort((a,c)=>(c.date||'').localeCompare(a.date||'')); // newest
-  const chip=(k,label)=>`<button class="${srt===k?'on':''}" onclick="setViolSort('${k}','${bid}')">${label}</button>`;
-  const sortRow=`<div class="recency" style="margin-bottom:12px">${chip('new','Newest first')}${chip('old','Oldest first')}${chip('open','Open first')}</div>`;
-  const showAll=(violShowAllFor===bid&&violShowAll);
-  const shown=showAll?ordered:ordered.slice(0,8);const more=ordered.length-shown.length;
-  const row=x=>{const open=isOpen(x);return `<div style="padding:10px 0;border-bottom:1px solid var(--line)"><div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline"><span style="font-weight:650;font-size:13.5px;color:var(--ink)">${esc(cap(x.desc))}</span><span style="flex:none;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;${open?'background:#FBE9E7;color:#C0392B':'background:#E7F5EC;color:#2E7D4F'}">${open?'OPEN':'Resolved'}</span></div><div style="font-size:12px;color:var(--ink-soft);margin-top:3px">${esc(x.date||'')}${x.dept?' · '+esc(cap(x.dept)):''}</div>${x.detail?`<div style="font-size:12.5px;color:var(--ink-soft);margin-top:5px;line-height:1.45">${esc(clip(x.detail,180))}</div>`:''}</div>`;};
-  const toggle=(more>0||showAll)?`<div style="margin-top:12px"><button class="btn ghost sm" style="width:auto;display:inline-flex" onclick="toggleViolAll('${bid}')">${showAll?'Show fewer':'Show all '+ordered.length+' records'}</button></div>`:'';
-  return `<div class="card"><div class="card-h"><span class="t">📋 Violation history (${v.count})</span><span class="small-note" style="color:var(--ink-faint)">${v.open} open · ${v.resolved} resolved</span></div><div class="card-b">${sortRow}<div>${shown.map(row).join('')}</div>${toggle}<div class="src-note" style="margin-top:8px">Source: City of Chicago Building Violations (dataset 22u3-xenr), looked up live by address.</div></div></div>`;}
+  fetch(url).then(x=>x.ok?x.json():Promise.reject('HTTP '+x.status)).then(j=>{_extCache[bid]=j;delete _extPending[bid];if(nav.view==='building'&&nav.id===bid)render();}).catch(e=>{_extCache[bid]={error:String(e)};delete _extPending[bid];});}
 function reviewsFor(bid){const base=isDemo()?DEMO_REVIEWS.concat(EXT_DEMO_REVIEWS).filter(r=>r.b===bid):comReviews(bid);return dedupById(base,S.reviews.filter(r=>r.b===bid));}
 function ratingOf(bid){if(_rCache[bid])return _rCache[bid];const rs=reviewsFor(bid);const r=rs.length?{avg:rs.reduce((a,x)=>a+x.overall,0)/rs.length,n:rs.length}:{avg:0,n:0};return _rCache[bid]=r;}
 function subAvgOf(bid){const rs=reviewsFor(bid);const o={};REVIEW_DIMS.forEach(d=>{const v=rs.map(r=>r.sub&&r.sub[d.k]).filter(x=>x>0);o[d.k]=v.length?v.reduce((a,b)=>a+b,0)/v.length:0;});return o;}
@@ -797,6 +906,20 @@ function scoreBreakdown(b){const r=ratingOf(b.id);let rec;if(b.demo){const d=b.d
 function gradeOf(sc){return sc>=85?'A':sc>=70?'B':sc>=55?'C':sc>=40?'D':'F';}
 function gradeClass(g){return {A:'gA',B:'gB',C:'gC',D:'gD',F:'gF'}[g]||'gC';}
 function tierColor(g){return {A:'#37946A',B:'#4A9D5F',C:'#E0A32E',D:'#E07E3A',F:'#E0574A'}[g]||'#E0A32E';}
+/* signature temperature dial — spectral sweep scaled to score, number inside */
+function dialGrad(sc){const sw=Math.max(6,Math.min(360,sc/100*360));const g=gradeOf(sc);const d=n=>Math.round(sw*n)+'deg';let stops;
+  if(g==='A')stops=`#7bc47a 0deg,#37946A ${d(1)}`;
+  else if(g==='B')stops=`#4DA9DF 0deg,#7bc47a ${d(0.42)},#F5C33B ${d(0.78)},#F26B3A ${d(1)}`;
+  else if(g==='C')stops=`#4DA9DF 0deg,#7bc47a ${d(0.5)},#E0A32E ${d(1)}`;
+  else if(g==='D')stops=`#4DA9DF 0deg,#E0A32E ${d(0.5)},#E0574A ${d(1)}`;
+  else stops=`#4DA9DF 0deg,#E07E3A ${d(0.5)},#E0574A ${d(1)}`;
+  return `conic-gradient(from 180deg,${stops},var(--dial-track) ${d(1)})`;}
+function dialHTML(sc,o){o=o||{};const size=o.size||104;const nsz=(size*0.30).toFixed(1);const cls='dial'+(o.badge?' dial-badge':'');
+  const lbl=o.showLabel?`<div class="dial-lbl" style="font-size:${(size*0.078).toFixed(1)}px">SCORE</div>`:'';
+  return `<div class="${cls}" style="width:${size}px;height:${size}px;margin:0;--grad:${dialGrad(sc)}" role="img" aria-label="Radiator score ${sc} of 100"><div class="dial-in"><div class="dial-n" style="font-size:${nsz}px">${sc}</div>${lbl}</div></div>`;}
+/* Chicago-flag six-point star bullet + hand-drawn squiggle underline */
+function fstar(px){px=px||12;return `<span class="fstar" style="width:${px}px;height:${px}px"></span>`;}
+function squiggle(blue){return `<svg class="squig${blue?' blue':''}" viewBox="0 0 150 14" fill="none" aria-hidden="true"><path d="M3 8 C 22 1, 38 1, 55 8 S 90 15, 108 8 S 138 2, 147 7" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/></svg>`;}
 function percentileOf(b){if(b.demo||b.lat==null)return null;const peers=REAL.filter(x=>x.hood===b.hood);if(peers.length<4)return null;const better=peers.filter(x=>x.open>b.open).length;const worse=peers.filter(x=>x.open<b.open).length;return {betterPct:Math.round(better/peers.length*100),worsePct:Math.round(worse/peers.length*100),clean:b.open===0};}
 function portfolioOf(b){if(b.demo){const s=DEMO.filter(x=>x.co===b.co);return{key:b.co,name:b.co,buildings:s};}const s=REAL.filter(x=>x.pg&&x.pg===b.pg);return{key:b.pg,name:'City property group #'+b.pg,buildings:s};}
 /* ===== management-company naming (shared, keyed by property group) ===== */
@@ -851,13 +974,11 @@ function postSignup(ctx){const el=document.getElementById('su-'+ctx);if(!el)retu
   try{localStorage.setItem('radiator.signedup','1');}catch(e){}
   toast('You\'re on the list — thanks! 🎉');render();
 }
-function aroundWebCard(name,isCompany,site){if(!name)return '';const L=webLinks(name,isCompany);
+function aroundWebCard(name,isCompany){if(!name)return '';const L=webLinks(name,isCompany);
   const btn=(href,label,sub,ic)=>`<a class="webbtn" href="${href}" target="_blank" rel="noopener noreferrer"><span class="wbi">${ic}</span><span class="wbtxt"><span class="wbt">${label}</span><span class="wbs">${sub}</span></span><span class="wbx">↗</span></a>`;
-  const siteHost=(()=>{try{return site?new URL(site).hostname.replace(/^www\./,''):null;}catch(e){return null;}})();
   return `<div class="card"><div class="card-h"><span class="t">🌐 Around the web</span></div><div class="card-b">
     <p class="small-note" style="margin:0 0 12px">See what Chicago renters say about <b style="color:var(--ink)">${esc(name)}</b> elsewhere — live, in their own words. Each opens that site's real search in a new tab.</p>
     <div class="webbtns">
-      ${siteHost?btn(esc(site),'Official website',esc(siteHost),'🏛️'):''}
       ${btn(L.reddit,'Reddit','Threads mentioning '+(isCompany?'this company':'this building'),'👽')}
       ${btn(L.googleReddit,'Reddit via Google','Often surfaces more threads','🔎')}
       ${btn(L.google,'Google','Ratings &amp; mentions','⭐')}
@@ -874,16 +995,9 @@ function issuesFor(bid){const base=isDemo()?DEMO_ISSUES.filter(x=>x.b===bid):com
 function openIssuesFor(bid){return issuesFor(bid).filter(i=>i.status!=='resolved').sort((a,c)=>daysOpen(c.date)-daysOpen(a.date));}
 function daysOpen(d){const t=Date.parse((d||'')+'T00:00:00');if(isNaN(t))return 0;return Math.max(0,Math.floor((now()-t)/DAY));}
 function daysTier(n){return n>=60?2:n>=21?1:0;}
-// Building names are controlled/seeded only — the community can't rename buildings.
-function nameOf(b){return (b&&b.name)||'';}
-function hasCustomName(b){return !!(b&&b.name&&b.addr&&b.name!==b.addr);}
-function extPhotos(bid){const e=_extCache[bid];if(e&&!e.error&&Array.isArray(e.photos))return e.photos;const c=phRecall(bid);return c?c.p:[];}
-function extWebsite(bid){const e=_extCache[bid];if(e&&!e.error&&e.website)return e.website;const c=phRecall(bid);return (c&&c.w)||null;}
-function bPhotos(bid){const out=[];
-  extPhotos(bid).forEach(p=>out.push(p)); // real building photos (Street View + Google), first
-  ((S.bphotos&&S.bphotos[bid])||[]).forEach(p=>out.push(p));comPhotos(bid).forEach(p=>out.push(p));reviewsFor(bid).forEach(r=>(r.photos||[]).forEach(p=>out.push(p)));issuesFor(bid).forEach(i=>(i.photos||[]).forEach(p=>out.push(p)));
-  // de-dupe while preserving order
-  const seen={};return out.filter(p=>p&&!seen[p]&&(seen[p]=1));}
+function nameOf(b){return (b&&S.names&&S.names[b.id])||(b&&COM.names&&COM.names[b.id])||(b&&b.name)||'';}
+function hasCustomName(b){return !!(b&&((S.names&&S.names[b.id])||(COM.names&&COM.names[b.id])||(b.name&&b.addr&&b.name!==b.addr)));}
+function bPhotos(bid){const out=[];((S.bphotos&&S.bphotos[bid])||[]).forEach(p=>out.push(p));comPhotos(bid).forEach(p=>out.push(p));reviewsFor(bid).forEach(r=>(r.photos||[]).forEach(p=>out.push(p)));issuesFor(bid).forEach(i=>(i.photos||[]).forEach(p=>out.push(p)));return out;}
 function fmtFull(d){if(!d)return '';const t=Date.parse(d+'T00:00:00');if(isNaN(t))return d;const dt=new Date(t);const M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return M[dt.getMonth()]+' '+dt.getDate()+', '+dt.getFullYear();}
 function todayISO(){const dt=new Date(now());const p=n=>String(n).padStart(2,'0');return dt.getFullYear()+'-'+p(dt.getMonth()+1)+'-'+p(dt.getDate());}
 function hasAccess(){return S.unlockedUntil>now();}
@@ -916,7 +1030,7 @@ function urlFor(view,id){
   if(view==='building'){const b=bById(id);return '/building/'+id+(b&&b.addr?'/'+urlSlug(b.addr):'');}
   if(view==='landlord'){const b=bById(id);const pg=b&&b.pg;return pg?('/company/'+pg):('/company/'+id);}
   if(view==='neighborhood')return '/neighborhood/'+urlSlug(id||'');
-  if(['explore','map','compare','neighborhoods','tools','pricing','saved','guide','profile','terms','privacy','guidelines','moderate'].includes(view))return '/'+view;
+  if(['explore','map','compare','neighborhoods','tools','pricing','saved','guide','profile'].includes(view))return '/'+view;
   if(view==='write'||view==='issue')return '/'+view+(id?('/'+id):'');
   return '/';
 }
@@ -928,7 +1042,7 @@ function setNavFromPath(path){
   if(seg==='building'){nav.view='building';nav.id=parts[1]||null;return;}
   if(seg==='company'){const pg=parts[1];const b=REAL.find(x=>String(x.pg)===String(pg));if(b){nav.view='landlord';nav.id=b.id;return;}nav.view='explore';nav.id=null;return;}
   if(seg==='neighborhood'){const s=parts[1]||'';const h=HOODS.find(x=>urlSlug(x)===s);nav.view=h?'neighborhood':'neighborhoods';nav.id=h||null;return;}
-  const known=['explore','map','compare','neighborhoods','tools','pricing','saved','guide','profile','write','issue','terms','privacy','guidelines','moderate'];
+  const known=['explore','map','compare','neighborhoods','tools','pricing','saved','guide','profile','write','issue'];
   if(known.includes(seg)){nav.view=seg;nav.id=parts[1]||null;return;}
   nav.view='home';nav.id=null;
 }
@@ -959,14 +1073,17 @@ const IC={
 /* ============ RENDER SHELL ============ */
 function render(){
   const v=nav.view;
-  const inner = v==='home'?viewHome() : v==='building'?viewBuilding(nav.id) : v==='landlord'?viewLandlord(nav.id) : v==='write'?viewWrite(nav.id) : v==='issue'?viewIssue(nav.id)
+  const inner = v==='home'?'' : v==='building'?viewBuilding(nav.id) : v==='landlord'?viewLandlord(nav.id) : v==='write'?viewWrite(nav.id) : v==='issue'?viewIssue(nav.id)
     : v==='map'?viewMap() : v==='compare'?viewCompare() : v==='neighborhoods'?viewNeighborhoods() : v==='neighborhood'?viewNeighborhood(nav.id)
     : v==='tools'?viewTools() : v==='guide'?viewGuide() : v==='saved'?viewSaved() : v==='pricing'?viewPricing() : v==='profile'?viewProfile()
-    : v==='terms'?viewLegal('terms') : v==='privacy'?viewLegal('privacy') : v==='guidelines'?viewLegal('guidelines') : v==='moderate'?viewModerate() : viewExplore();
+    : v==='terms'?viewLegal('terms') : v==='privacy'?viewLegal('privacy') : v==='guidelines'?viewLegal('guidelines') : viewExplore();
   const isHome = v==='home';
   const banner = isHome?'' : isDemo()?`<div class="samplebanner demo">Showcase mode · fictional buildings &amp; sample reviews — switch to Live in Profile</div>`
     :`<div class="samplebanner live">Live City of Chicago building records · ${REAL.length} buildings · updated ${esc(CHI.generated||'')}</div>`;
-  const showBack = ['building','landlord','write','issue','neighborhood','guide','terms','privacy','guidelines','moderate'].includes(v);
+  const showBack = ['building','landlord','write','issue','neighborhood','guide','terms','privacy','guidelines'].includes(v);
+  if(isHome){
+    $('#app').innerHTML = viewHome() + mobtabs();
+  } else {
   $('#app').innerHTML=`
     ${banner}
     <div class="shell">
@@ -975,14 +1092,16 @@ function render(){
         <div class="appbar">
           <div class="mob-brand" onclick="tab('home')" style="cursor:pointer">${IC.radiator}<span class="wm">radiator</span></div>
           ${showBack?`<button class="back" onclick="back()" aria-label="Back">‹</button>`:''}
-          ${isHome?'<div class="spacer"></div>':`<div class="searchbox">${IC.search}<input id="q" placeholder="Search building name or address (e.g. Noca Blu)" value="${esc(searchQ)}" oninput="onSearch(this.value)" autocomplete="off"></div>
-          <div class="spacer"></div>`}
+          <div class="searchbox">${IC.search}<input id="q" placeholder="Search building name or address (e.g. Noca Blu)" value="${esc(searchQ)}" oninput="onSearch(this.value)" autocomplete="off"></div>
+          <div class="spacer"></div>
         </div>
-        <div class="content ${(v==='map'||v==='compare')?'wide':''}"><div class="screen">${inner}</div>${v==='home'?'':siteFooter()}</div>
+        <div class="content ${(v==='map'||v==='compare'||v==='explore')?'wide':''}"><div class="screen">${inner}</div>${siteFooter()}</div>
       </div>
     </div>
     ${mobtabs()}`;
+  }
   if(v==='map') drawMap('map-main');
+  if(v==='explore') drawMap('exp-map');
   if(v==='write') initWriteForm();
   if(v==='issue') initIssueForm();
   if(v==='tools'){ calcDeposit(); calcNotice(); }
@@ -1082,26 +1201,63 @@ function viewLegal(which){
 /* ============ EXPLORE ============ */
 function viewHome(){
   const total=REAL.length.toLocaleString();
-  return `<div class="landing">
-    <div class="hero-land">
-      <span class="hero-eyebrow">CHICAGO · ${total} BUILDINGS SCORED</span>
-      <h1 class="hero-title">Check the building <span class="clip">before you sign</span>.</h1>
-      <p class="hero-sub">Real tenant experiences, rent history, transit, and official City of Chicago records — one honest page per apartment, so you know a building's full history before you sign.</p>
-      <div class="hero-search"><span class="hs-dot"></span><input id="qh" placeholder="Search a building name or address…" value="${esc(searchQ)}" oninput="searchQ=this.value" onkeydown="if(event.key==='Enter'){nav.view='explore';render();}"><button class="hs-btn" onclick="nav.view='explore';render();">Search</button></div>
-      <div class="hero-chips">${['Logan Square','Lakeview','Reliable heat','Noca Blu'].map(q=>`<button class="hchip" onclick="searchQ='${esc(q)}';nav.view='explore';nav.prev=[];render();">${esc(q)}</button>`).join('')}</div>
+  const nhoods=(HOOD_STATS||[]).slice().sort((a,b)=>b.n-a.n).slice(0,4);
+  const stripes=[['#d9c3b2','#e2cfbf'],['#cdb6a4','#d8c3b2'],['#d4c0ae','#ded0bf'],['#cbb19c','#d6c1af']];
+  const nbCards=nhoods.map((h,i)=>`<button class="hnb-card" onclick="go('neighborhood','${esc(h.hood)}')" style="background:repeating-linear-gradient(45deg,${stripes[i%4][0]},${stripes[i%4][0]} 9px,${stripes[i%4][1]} 9px,${stripes[i%4][1]} 18px)"><span class="g"></span><span class="t"><span class="nm">${esc(h.hood)}</span><span class="s">${h.n} building${h.n===1?'':'s'} · ${h.avgOpen} avg</span></span></button>`).join('');
+  const chips=['2340 W Medill Ave','Logan Square','Kedzie Holdings LLC'];
+  return `<div class="landing-page">
+    <div class="land-nav">
+      <div class="ln-brand" onclick="tab('home')" style="cursor:pointer">${IC.radiator}<span class="wm">radiator</span></div>
+      <div class="ln-links"><a onclick="tab('explore')">Explore</a><a onclick="tab('tools')">Tenant tools</a><a onclick="document.getElementById('why').scrollIntoView({behavior:'smooth'})">How scoring works</a><a class="signin" onclick="tab('profile')">Sign in</a><a class="cta" onclick="go('write',null)">Write a review</a></div>
     </div>
-    <div class="feat3">
-      <div class="fcard"><div class="fic">🌡️</div><h3>A score you can trust</h3><p>Every building gets a 0–100 Radiator Score and letter grade, built from real city violation records and verified tenant reviews — not vibes.</p>
-        <div style="display:flex;align-items:center;gap:14px;margin-top:16px"><div class="dial" style="width:66px;height:66px;--sweep:266deg;--tier:#E0A32E;margin:0"><div class="dial-in" style="width:50px;height:50px"><div class="dial-g" style="font-size:1.3rem">B</div></div></div><div style="font-family:var(--mono);font-size:12px;color:var(--ink-faint)">74 / 100<br>Watch list</div></div></div>
-      <div class="fcard"><div class="fic">🏛️</div><h3>Real City records</h3><p>${total} Chicago buildings with their code-violation history, translated from government tables into plain English — open vs resolved, and what keeps breaking.</p></div>
-      <div class="fcard"><div class="fic">💬</div><h3>Reviews that count</h3><p>Structured, verified-tenant reviews with sub-scores and "what I wish I'd known," plus ratings aggregated from Google, Yelp &amp; Reddit — all in one place.</p></div>
+    <div class="land-wrap">
+      <div class="land-hero">
+        <div>
+          <div class="land-eyebrow">${fstar(12)}Before you sign</div>
+          <h1 class="land-title">Rent smarter. Know the whole story.</h1>${squiggle()}
+          <p class="land-sub">Every Chicago address gets one honest Radiator Score — built from real City code records, verified tenant reviews, and Google, Yelp &amp; Reddit in one place.</p>
+          <div class="land-search"><span class="dot"></span><input id="qh" placeholder="Search an address, building, or landlord…" value="${esc(searchQ)}" oninput="searchQ=this.value" onkeydown="if(event.key==='Enter'){tab('explore');}"><button class="hs-btn" onclick="tab('explore')">Search</button></div>
+          <div class="land-chips">${chips.map(q=>`<button onclick="searchQ='${esc(q)}';nav.prev=[];tab('explore');">${esc(q)}</button>`).join('')}</div>
+          <div class="land-trust"><span class="lead">${fstar(11)}CITY OF CHICAGO OPEN DATA</span><span>${total} buildings</span><span>77 neighborhoods</span><span>4 review sources</span><span>144 CTA ‘L’ stations</span></div>
+        </div>
+        <div class="land-collage">
+          <svg class="lp-arc" width="360" height="200" viewBox="0 0 360 200" fill="none" aria-hidden="true"><path d="M20 190 A 150 150 0 0 1 320 190" stroke="#F59E2E" stroke-width="26" stroke-linecap="round"/><path d="M52 190 A 118 118 0 0 1 288 190" stroke="#F26B3A" stroke-width="26" stroke-linecap="round"/></svg>
+          <div class="lp-photo sm"><span class="cap" style="left:9px;bottom:10px">3-FLAT FACADE</span></div>
+          <div class="lp-photo lg"><span class="scrim"></span><span class="cap" style="left:12px;top:10px;color:#F5E9DF">PHOTO · LOGAN SQ GREYSTONE</span><span style="position:absolute;left:12px;bottom:12px;font-family:var(--display);font-weight:700;font-size:16px;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.5)">2340 W Medill Ave</span></div>
+          <div class="lp-seal"><span>KNOW<br>BEFORE<br>YOU SIGN</span></div>
+          <div class="lp-dialcard">${dialHTML(74,{size:56})}<div><div class="k">RADIATOR SCORE</div><div class="n">2340 W Medill</div><span class="gpill gC">B‑ · Watch</span></div></div>
+        </div>
+      </div>
     </div>
-    <div class="g2g-band">
-      <div><h2>Post one honest review, unlock the whole city.</h2><p>Radiator runs on give-to-get: share your building experience and get 30 days of full access to every review in Chicago. Free to browse the records, always. <a onclick="tab('pricing')" style="color:#fff;text-decoration:underline;text-underline-offset:3px;cursor:pointer;white-space:nowrap">See all plans →</a></p></div>
-      <button class="btn" onclick="go('write',null)">＋ Write a review</button>
-    </div>
-    <div style="margin-top:26px">${signupBox('home')}</div>
-    <div class="landing-foot">RADIATOR · CHECK IT BEFORE YOU SIGN · CHICAGO · <a onclick="tab('pricing')">Pricing</a> · <a onclick="tab('terms')">Terms</a> · <a onclick="tab('privacy')">Privacy</a> · <a onclick="tab('guidelines')">Guidelines</a></div>
+    <div class="land-wrap"><div class="land-sec land-why" id="why">
+      <div class="land-eyebrow" style="color:var(--heat-deep)">${fstar(11)}Why Radiator</div>
+      <h2>Everything about a building.<br>One honest page.</h2>
+      <div class="sq">${squiggle(true)}</div>
+      <p class="lead">We pull the records, gather the reviews, and do the math — so you can size up any Chicago address in about a minute.</p>
+      <div class="feat3 center">
+        <div class="fcard"><div class="fic-tile" style="background:var(--azure-soft);font-size:26px">🌡️</div><div class="feb" style="color:var(--flag)">The Radiator Score</div><p>A 0–100 score and letter grade from records, reviews, heat complaints and responsiveness — weighted, not vibes.</p></div>
+        <div class="fcard"><div class="fic-tile" style="background:var(--risk-soft);font-size:24px">📋</div><div class="feb" style="color:var(--heat-deep)">Real City records</div><p>Every code violation, heat complaint and permit pulled straight from City of Chicago open data. Nothing hidden.</p></div>
+        <div class="fcard"><div class="fic-tile" style="background:var(--good-soft);font-size:24px">💬</div><div class="feb" style="color:var(--good)">Reviews that count</div><p>Verified tenants rate heat, maintenance, noise and more — plus Google, Yelp &amp; Reddit folded into one score.</p></div>
+      </div>
+    </div></div>
+    <div class="land-wrap"><div class="land-sec" style="text-align:center">
+      <div class="land-eyebrow" style="color:var(--heat-deep)">${fstar(11)}Neighborhoods</div>
+      <h2 style="font-family:var(--display);font-weight:800;font-size:clamp(26px,3.2vw,34px);letter-spacing:-.03em;margin:12px 0 0">Start where you're looking</h2>
+      <div style="display:flex;justify-content:center">${squiggle()}</div>
+      <div class="hnb-grid" style="margin-top:14px">${nbCards}</div>
+    </div></div>
+    <div class="land-wrap"><div class="land-g2g">
+      <div class="eb">Give to get</div>
+      <h2>Give a little. Get all of Chicago.</h2>
+      <p>Post one honest review of a place you've lived and unlock full records, scores and reviews for every building in Chicago. It stays free.</p>
+      <button class="g2g-cta" onclick="go('write',null)">Write your first review</button>
+      <div class="lp-badges">
+        <div class="lp-badge"><div class="st" style="font-size:26px">24</div><div class="cap">VERIFIED REVIEWS</div></div>
+        <div class="lp-badge"><div class="st" style="font-size:13px;color:var(--flag)">CITY<br>DATA</div><div class="cap">REAL &amp; PUBLIC</div></div>
+        <div class="lp-badge"><div class="st" style="font-size:13px;color:var(--good)">RLTO<br>TOOLS</div><div class="cap">ALWAYS FREE</div></div>
+      </div>
+    </div></div>
+    <div class="land-foot">RADIATOR · CHECK IT BEFORE YOU SIGN · CHICAGO · <a onclick="tab('pricing')">Pricing</a> · <a onclick="tab('terms')">Terms</a> · <a onclick="tab('privacy')">Privacy</a> · <a onclick="tab('guidelines')">Guidelines</a></div>
   </div>`;
 }
 function viewPricing(){const access=hasAccess();
@@ -1120,18 +1276,18 @@ function viewPricing(){const access=hasAccess();
   </div>
   <div class="price-rule">💡 <b>Why give-to-get?</b> Reviews are the scarce, valuable thing — so early on Radiator is priced to maximize reviews, not revenue. A 3-month access pass ($19.99) is also available at checkout for apartment hunts. ${access?'<b style="color:var(--good)">You currently have full access.</b>':'You don\'t have full access yet — writing one review is the fastest way in.'}</div>
   <div class="price-rule" style="border-style:solid;background:linear-gradient(135deg,#2A2320,#3B2C22);color:rgba(255,248,242,.85);border:none">🏢 <b style="color:#fff">Landlords &amp; partners.</b> Claimed building profiles, verified right-of-reply, and relocation/employer partnerships are coming after launch. That's how Radiator stays free and honest for renters.</div>`;}
-/* ===== management-company (landlord) search ===== */
-let _pgIndex=null;
-function pgIndex(){if(_pgIndex)return _pgIndex;_pgIndex={};REAL.forEach(b=>{if(b.pg){(_pgIndex[b.pg]=_pgIndex[b.pg]||[]).push(b);}});return _pgIndex;}
-function namedCompanies(){const names=Object.assign({},COM.names||{},S.names||{});const idx=pgIndex();const out=[];
-  Object.keys(names).forEach(k=>{if(/^pg/.test(k)){const bs=idx[k.slice(2)]||[];if(bs.length)out.push({key:k,name:names[k],buildings:bs});}});return out;}
-function companyMatches(q){if(!q)return [];q=q.toLowerCase();return namedCompanies().filter(c=>(c.name||'').toLowerCase().includes(q)).sort((a,b)=>b.buildings.length-a.buildings.length);}
-function companyCard(c){const worst=Math.max(...c.buildings.map(riskOf));const bid=c.buildings[0].id;const rs=c.buildings.flatMap(x=>reviewsFor(x.id));const avg=rs.length?(rs.reduce((a,r)=>a+r.overall,0)/rs.length):0;
-  return `<button class="bcard" style="text-align:left;cursor:pointer;border:none;width:100%;padding:0" onclick="go('landlord','${bid}')">
-    <div class="thumb" style="background:linear-gradient(135deg,#4C6FA5,#33507E);border:none;width:100%;display:flex;align-items:center;justify-content:center"><span style="font-size:40px">🏢</span></div>
-    <div class="bcard-body"><div class="name">${esc(c.name)}</div><div class="addr">${c.buildings.length} building${c.buildings.length===1?'':'s'} on record</div>
-    <div class="recline"><span class="flag ${RISK_CLASS[worst]}" style="display:inline-flex"><span class="dot"></span>${RISK_LABEL[worst]}</span></div>
-    <div class="meta">${avg?`<span class="rating-pill">${avg.toFixed(1)} ${starsHTML(avg)}</span>`:`<span class="rating-pill" style="color:var(--ink-faint);font-weight:600">Management company</span>`}<span class="cmpbtn">View portfolio →</span></div></div></button>`;}
+function brow(b){const r=b._r||ratingOf(b.id);const sc=b._s||scoreOf(b);const g=gradeOf(sc);const inCmp=S.compare.includes(b.id);const dn=nameOf(b);const oi=openIssuesFor(b.id).length;
+  const sub=b.demo?esc(b.addr):(esc(b.hood)+(b.co?(' · '+esc(b.co)):''));
+  const chips=b.demo?`<span class="ec">${esc(b.co||'')}</span>`:`<span class="ec ${b.open>0?'risk':'good'}">${b.open} OPEN</span><span class="ec">${b.fixed} RESOLVED</span>${oi?`<span class="ec risk">🔥 ${oi}</span>`:''}`;
+  const rating=r.n?`<span class="ec">${r.avg.toFixed(1)}★ · ${r.n}</span>`:`<span class="ec">No reviews</span>`;
+  return `<div class="blrow${inCmp?' incmp':''}" role="button" tabindex="0" onclick="go('building','${b.id}')">
+    ${dialHTML(sc,{size:58})}
+    <div class="blrow-main">
+      <div class="blrow-top"><span class="nm">${esc(dn)}</span><span class="gpill ${gradeClass(g)}">${g}</span></div>
+      <div class="blrow-sub">${sub}</div>
+      <div class="blrow-chips">${chips}${rating}<button class="cmp-sm ${inCmp?'on':''}" onclick="event.stopPropagation();toggleCompare('${b.id}')">${inCmp?'✓ Comparing':'+ Compare'}</button></div>
+    </div></div>`;
+}
 function viewExplore(){
   let list=buildings();
   if(hoodFilter!=='all')list=list.filter(b=>b.hood===hoodFilter);
@@ -1144,28 +1300,38 @@ function viewExplore(){
   else if(sortBy==='reviews')list.sort((a,b)=>b._r.n-a._r.n);
   else if(sortBy==='az')list.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
   const hoodsForChips=isDemo()?[...new Set(DEMO.map(b=>b.hood))].sort():HOODS;
-  return `<h1 class="page-t">Explore Chicago buildings</h1>
-  <p class="page-sub">${isDemo()?'Fictional sample buildings to demonstrate the review experience.':'<b style="color:var(--ink)">Before you sign, check the Radiator.</b> Real tenant experiences, rent history, transit, and official city records for every Chicago building — search a name or address.'}</p>
-  <div class="filterbar">
+  const loc=hoodFilter!=='all'?hoodFilter:(searchQ.trim()?'Search results':'All Chicago');
+  const filters=`<div class="filterbar">
     <span class="selpill ${hoodFilter!=='all'?'act':''}"><select onchange="setFilter('hood',this.value)"><option value="all">All neighborhoods</option>${hoodsForChips.map(h=>`<option value="${esc(h)}"${hoodFilter===h?' selected':''}>${esc(h)}</option>`).join('')}</select></span>
     <span class="selpill ${riskFilter!=='all'?'act':''}"><select onchange="setFilter('risk',this.value)"><option value="all">Any risk</option><option value="good"${riskFilter==='good'?' selected':''}>Good standing</option><option value="watch"${riskFilter==='watch'?' selected':''}>Watch list</option><option value="risk"${riskFilter==='risk'?' selected':''}>High risk</option></select></span>
     <span class="selpill"><select onchange="setFilter('sort',this.value)"><option value="score"${sortBy==='score'?' selected':''}>Top score</option><option value="risk"${sortBy==='risk'?' selected':''}>Highest risk</option><option value="rating"${sortBy==='rating'?' selected':''}>Top rated</option><option value="reviews"${sortBy==='reviews'?' selected':''}>Most reviewed</option><option value="az"${sortBy==='az'?' selected':''}>A–Z</option></select></span>
-  </div>
-  ${(()=>{const ch=companyMatches(searchQ.trim());return ch.length?`<div class="section-t" style="margin:2px 0 10px">🏢 Management companies (${ch.length})</div><div class="bgrid" style="margin-bottom:22px">${ch.map(companyCard).join('')}</div><div class="section-t" style="margin:0 0 10px">Buildings (${list.length.toLocaleString()})</div>`:'';})()}
-  <div class="result-meta"><span class="count">${list.length.toLocaleString()} building${list.length===1?'':'s'}${list.length>RENDER_CAP?' · showing '+RENDER_CAP:''}</span></div>
-  ${list.length?`<div class="bgrid">${list.slice(0,RENDER_CAP).map(bcard).join('')}</div>${list.length>RENDER_CAP?`<p class="small-note" style="text-align:center;margin-top:18px">Showing the top ${RENDER_CAP} of ${list.length.toLocaleString()} — narrow it with search or a neighborhood filter.</p>`:''}`
-    :`<div class="empty"><div class="em">🔍</div><div class="t">No building on file for “${esc(searchQ||'that')}”</div><div class="d">We track ${REAL.length.toLocaleString()} Chicago buildings that have a city code-enforcement record. Yours may simply have no violation history yet — you can still add it and write the first review.</div><div style="margin-top:16px"><button class="btn primary" style="width:auto;display:inline-flex" onclick="prefillAddr='${esc((searchQ||'').replace(/'/g,''))}';go('write',null)">${IC.plus}Add “${esc(searchQ||'this address')}” &amp; review it</button></div></div>`}`;
+  </div>`;
+  const head=`<div class="exp-eyebrow">${fstar(11)}EXPLORE · ${esc(loc.toUpperCase())}</div>
+  <h1 class="exp-title">${list.length.toLocaleString()} building${list.length===1?'':'s'}</h1>${squiggle()}
+  ${filters}`;
+  if(!list.length)return head+`<div class="empty"><div class="em">🔍</div><div class="t">No building on file for “${esc(searchQ||'that')}”</div><div class="d">We track ${REAL.length.toLocaleString()} Chicago buildings that have a city code-enforcement record. Yours may simply have no violation history yet — you can still add it and write the first review.</div><div style="margin-top:16px"><button class="btn primary" style="width:auto;display:inline-flex" onclick="prefillAddr='${esc((searchQ||'').replace(/'/g,''))}';go('write',null)">${IC.plus}Add “${esc(searchQ||'this address')}” &amp; review it</button></div></div>`;
+  const rows=list.slice(0,RENDER_CAP).map(brow).join('');
+  const capNote=list.length>RENDER_CAP?`<p class="small-note" style="text-align:center;margin:6px 0 2px">Showing the top ${RENDER_CAP} of ${list.length.toLocaleString()} — narrow with search or a filter.</p>`:'';
+  return head+`<div class="exp-split">
+    <div class="exp-list">${rows}${capNote}</div>
+    <div class="exp-map">
+      <div class="mapzoom"><button onclick="mapZoom(1)" aria-label="Zoom in">+</button><button onclick="mapZoom(-1)" aria-label="Zoom out">−</button><button onclick="mapZoom(0)" aria-label="Reset zoom" style="font-size:14px">⤢</button></div>
+      <div id="exp-map"></div>
+      <div class="mapcallout" id="mapcallout"><button class="co-close" onclick="hideMapCallout()" aria-label="Close">×</button><div id="mapcallout-body"></div></div>
+      <div class="exp-maplegend"><div style="color:var(--ink-faint)">SCORE</div><div class="row"><span><i style="background:var(--good)"></i>Good</span><span><i style="background:var(--watch)"></i>Watch</span><span><i style="background:var(--risk)"></i>High risk</span></div></div>
+    </div>
+  </div>`;
 }
 function bcard(b){const r=b._r||ratingOf(b.id);const sc=b._s||scoreOf(b);const g=gradeOf(sc);const seed=hashStr(b.id+b.name);const inCmp=S.compare.includes(b.id);
-  const oi=openIssuesFor(b.id).length;const ph=bPhotos(b.id)[0]||svPhoto(b);const dn=nameOf(b);const custom=hasCustomName(b);
+  const oi=openIssuesFor(b.id).length;const ph=bPhotos(b.id)[0];const dn=nameOf(b);const custom=hasCustomName(b);
   const recLine=b.demo?`<span>${esc(b.co)}</span>`:`<span><b>${b.open}</b> open</span><span class="sep">·</span><span><b>${b.fixed}</b> resolved</span>${oi?`<span class="sep">·</span><span style="color:var(--risk);font-weight:700">🔥 ${oi} issue${oi>1?'s':''}</span>`:''}`;
   return `<div class="bcard">
-    <button class="thumb ${ph?'hasimg':''}" style="${gradOf(seed)};border:none;width:100%;cursor:pointer" onclick="go('building','${b.id}')">
-      ${ph?`<img class="cover-img" src="${ph}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling&&(this.nextElementSibling.style.display='none')"><div class="scrim"></div>`:`<span class="ph-emoji">${emoOf(seed)}</span>`}
-      <div class="score-badge"><span class="scorechip"><span class="g ${gradeClass(g)}">${g}</span><span class="n">${sc}<small>/100</small></span></span></div></button>
+    <button class="thumb ${ph?'hasimg':''}" style="${ph?'':gradOf(seed)};border:none;width:100%;cursor:pointer" onclick="go('building','${b.id}')">
+      ${ph?`<img class="cover-img" src="${ph}" alt=""><div class="scrim"></div>`:`<span class="ph-emoji">${emoOf(seed)}</span>`}
+      ${dialHTML(sc,{size:52,badge:true})}</button>
     <div class="bcard-body">
       <button style="background:none;border:none;text-align:left;padding:0;cursor:pointer" onclick="go('building','${b.id}')">
-        <div class="name">${esc(dn)}</div><div class="addr">${esc(custom?b.addr:(b.demo?b.addr:b.hood))}</div></button>
+        <div class="name">${esc(dn)} <span class="gpill ${gradeClass(g)}">${g}</span></div><div class="addr">${esc(custom?b.addr:(b.demo?b.addr:b.hood))}</div></button>
       <div class="recline">${recLine}</div>
       <div class="meta">
         ${r.n?`<span class="rating-pill">${r.avg.toFixed(1)} ${starsHTML(r.avg)} <small>(${r.n})</small></span>`:`<span class="rating-pill" style="color:var(--ink-faint);font-weight:600">No reviews yet</span>`}
@@ -1182,11 +1348,11 @@ function setRecency(r){reviewRecency=r;reviewRecencyFor=nav.id;render();}
 function viewMap(){
   return `<h1 class="page-t">Chicago risk map</h1><p class="page-sub">Every tracked building plotted on the city's real neighborhood boundaries, colored by open-violation risk. Filter to a neighborhood to drop pins; click any marker to open it.</p>
   <div class="maplayout">
-    <div><div class="mapbox"><div id="map-main"></div><div class="maplegend"><span><i style="background:var(--good)"></i>Good standing</span><span><i style="background:var(--watch)"></i>Watch</span><span><i style="background:var(--risk)"></i>High risk</span></div></div><div class="mapcap" id="mapcap"></div></div>
+    <div><div class="mapbox"><div class="mapzoom"><button onclick="mapZoom(1)" aria-label="Zoom in">+</button><button onclick="mapZoom(-1)" aria-label="Zoom out">−</button><button onclick="mapZoom(0)" aria-label="Reset zoom" title="Reset zoom" style="font-size:14px">⤢</button></div><div id="map-main"></div><div class="mapcallout" id="mapcallout"><button class="co-close" onclick="hideMapCallout()" aria-label="Close">×</button><div id="mapcallout-body"></div></div><div class="maplegend"><span><i style="background:var(--good)"></i>Good standing</span><span><i style="background:var(--watch)"></i>Watch</span><span><i style="background:var(--risk)"></i>High risk</span></div></div><div class="mapcap" id="mapcap"></div></div>
     <div class="map-side">
       <div class="selpill" style="width:100%"><select onchange="setFilter('hood',this.value)"><option value="all">All neighborhoods</option>${HOODS.map(h=>`<option value="${esc(h)}"${hoodFilter===h?' selected':''}>${esc(h)}</option>`).join('')}</select></div>
       <div class="selpill" style="width:100%"><select onchange="setFilter('risk',this.value)"><option value="all">Any risk</option><option value="good"${riskFilter==='good'?' selected':''}>Good standing</option><option value="watch"${riskFilter==='watch'?' selected':''}>Watch list</option><option value="risk"${riskFilter==='risk'?' selected':''}>High risk</option></select></div>
-      <div class="hint">Dots are sized and colored by how many open building-code violations each address has on file with the City of Chicago. Bigger red dots = more open violations. ${isDemo()?'<b>Switch to Live mode in Profile to see the real map.</b>':''}</div>
+      <div class="hint">Pins are colored by how many open building-code violations each address has on file with the City of Chicago — green good, amber watch, red high risk. Zoom in or filter to a neighborhood and each pin shows that building's Radiator Score; tap one for a quick card. ${isDemo()?'<b>Switch to Live mode in Profile to see the real map.</b>':''}</div>
     </div>
   </div>`;
 }
@@ -1202,21 +1368,38 @@ function drawMap(mountId){const mount=$('#'+mountId);if(!mount||!CHI.hoods||!CHI
   if(list.length>MAP_CAP){const step=Math.ceil(list.length/MAP_CAP);list=list.filter((_,i)=>i%step===0);sampled=true;}
   const paths=CHI.hoods.map(h=>{if(!h.ring||h.ring.length<3)return '';const sel=hoodFilter!=='all'&&h.name===hoodFilter;const d='M'+h.ring.map(p=>X(p[0]).toFixed(1)+','+Y(p[1]).toFixed(1)).join('L')+'Z';return `<path class="hoodpath${sel?' sel':''}" d="${d}" data-hood="${esc(h.name)}"/>`;}).join('');
   const asPins = list.length<=600;
+  const showNum = list.length<=140;
   const marks=list.map(b=>{if(b.lat==null)return '';const r=riskOf(b);const cls=['g','w','r'][r];const x=X(b.lng).toFixed(1);const y=Y(b.lat).toFixed(1);
-    if(asPins){const k=(r===2?2.0:r===1?1.7:1.5).toFixed(2);return `<g class="bpin ${cls}" data-id="${b.id}" transform="translate(${x},${y}) scale(${k})"><path d="M0,0 C-6,-10 -6,-16 0,-16 C6,-16 6,-10 0,0 Z"/><circle cx="0" cy="-11" r="2.6" fill="#fff" pointer-events="none"/></g>`;}
+    if(asPins){const k=(r===2?(showNum?2.4:2.0):r===1?(showNum?2.2:1.7):(showNum?2.1:1.5)).toFixed(2);
+      const inner=showNum?`<text x="0" y="-11" text-anchor="middle" dominant-baseline="central" font-family="'Bricolage Grotesque',sans-serif" font-weight="800" font-size="6.6" fill="#fff" pointer-events="none">${scoreOf(b)}</text>`:`<circle cx="0" cy="-11" r="2.6" fill="#fff" pointer-events="none"/>`;
+      return `<g class="bpin ${cls}" data-id="${b.id}" transform="translate(${x},${y}) scale(${k})"><path d="M0,0 C-6.5,-11 -6.5,-17 0,-17 C6.5,-17 6.5,-11 0,0 Z"/>${inner}</g>`;}
     const rad=r===2?4.2:r===1?3.2:2.6;return `<circle class="bdot ${cls}" cx="${x}" cy="${y}" r="${rad}" data-id="${b.id}"/>`;}).join('');
   mount.innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" aria-label="Chicago building risk map">${paths}${marks}</svg>`;
   const cap=$('#mapcap'); if(cap) cap.textContent = sampled?`Showing a ${list.length.toLocaleString()}-building sample of ${totalDots.toLocaleString()} — pick a neighborhood to see every one.`:`${totalDots.toLocaleString()} building${totalDots===1?'':'s'} shown · source: City of Chicago`;
+  mount.style.maxHeight='';mount.style.overflow='';delete mount.dataset.frozen;mapZoomLevel=1;
   mount.querySelector('svg').addEventListener('click',e=>{const t=e.target;const pin=t&&t.closest?t.closest('.bpin'):null;
-    if(t&&t.classList.contains('bdot')){const id=t.getAttribute('data-id');if(id)go('building',id);}
-    else if(pin){const id=pin.getAttribute('data-id');if(id)go('building',id);}
-    else if(t&&t.classList.contains('hoodpath')){const h=t.getAttribute('data-hood');if(h){hoodFilter=h;render();}}});
+    const id=(t&&t.classList.contains('bdot'))?t.getAttribute('data-id'):(pin?pin.getAttribute('data-id'):null);
+    if(id){const svg=mount.querySelector('svg');[...svg.querySelectorAll('.bpin.sel')].forEach(p=>p.classList.remove('sel'));if(pin)pin.classList.add('sel');showMapCallout(id);}
+    else if(t&&t.classList.contains('hoodpath')){const h=t.getAttribute('data-hood');if(h){hoodFilter=h;render();}}
+    else{hideMapCallout();}});
 }
+let mapZoomLevel=1;
+function mapMount(){return $('#map-main')||$('#exp-map');}
+function mapZoom(dir){const wrap=mapMount();const svg=wrap&&wrap.querySelector('svg');if(!svg)return;
+  if(!wrap.dataset.frozen){wrap.style.maxHeight=wrap.clientHeight+'px';wrap.style.overflow='auto';wrap.dataset.frozen='1';}
+  if(dir===0)mapZoomLevel=1;else mapZoomLevel=Math.max(1,Math.min(4,+(mapZoomLevel+(dir>0?0.5:-0.5)).toFixed(2)));
+  svg.style.width=(mapZoomLevel*100)+'%';
+  if(mapZoomLevel===1){wrap.style.maxHeight='';wrap.style.overflow='';delete wrap.dataset.frozen;}}
+function showMapCallout(id){const b=bById(id);if(!b)return;const box=$('#mapcallout');const body=$('#mapcallout-body');if(!box||!body)return;
+  const sc=scoreOf(b);const r=ratingOf(id);const recs=b.demo?esc(b.co):`<b>${b.open}</b> open · <b>${b.fixed}</b> resolved`;
+  body.innerHTML=`<div class="co-head">${dialHTML(sc,{size:52})}<div><div class="co-name">${esc(nameOf(b))}</div><div class="co-sub">${esc(b.demo?b.addr:b.hood)}</div></div></div>
+    <div class="co-stats"><span>${recs}</span>${r.n?`<span>${r.avg.toFixed(1)}★ · ${r.n}</span>`:'<span>No reviews yet</span>'}</div>
+    <button class="btn primary full" onclick="go('building','${id}')">Open building →</button>`;
+  box.classList.add('show');}
+function hideMapCallout(){const box=$('#mapcallout');if(box)box.classList.remove('show');const wrap=mapMount();const svg=wrap&&wrap.querySelector('svg');if(svg)[...svg.querySelectorAll('.bpin.sel')].forEach(p=>p.classList.remove('sel'));}
 
 /* ============ BUILDING ============ */
 function viewBuilding(bid){const b=bById(bid);if(!b)return '<div class="empty">Building not found</div>';
-  if(unitFilterFor!==bid){unitFilter='all';unitFilterFor=bid;}
-  if(!b.demo){fetchExt(b);fetchViol(b);} // start live photo/rating + violation lookups ASAP
   const seed=hashStr(bid+b.name);const r=ratingOf(bid);const sc=scoreOf(b);const g=gradeOf(sc);const sa=subAvgOf(bid);const saved=S.saved.includes(bid);const inCmp=S.compare.includes(bid);
   const allR=reviewsFor(bid).slice().sort((a,c)=>(c.helpful||0)-(a.helpful||0));
   const dimsWith=REVIEW_DIMS.filter(d=>(sa[d.k]||0)>0);
@@ -1278,13 +1461,10 @@ function viewBuilding(bid){const b=bById(bid);if(!b)return '<div class="empty">B
   </div></div>`;
 
   // photos (real, user-added)
-  const photos=bPhotos(bid);const heroPhoto=photos[0]||svPhoto(b);
+  const photos=bPhotos(bid);const heroPhoto=photos[0];
   const galSample=(b.demo&&!photos.length)?[0,1,2].map(i=>`<div class="g" style="${gradOf(seed+i)}">${emoOf(seed+i)}<span class="tag">SAMPLE</span></div>`).join(''):'';
-  const galUser=photos.map(p=>`<div class="g"><img src="${p}" alt="Building photo" loading="lazy" onerror="this.parentNode.style.display='none'"></div>`).join('');
-  const nExt=extPhotos(bid).length;
-  const galNote=nExt?`<div class="src-note" style="margin-top:10px">Street View &amp; Google listing photos of the building. Tenant photos of the lobby, a unit, or a problem help even more — add yours.</div>`:'';
-  const galSv=(!photos.length&&!b.demo&&svPhoto(b))?`<div class="g"><img src="${svPhoto(b)}" alt="Street View" loading="lazy" onerror="this.parentNode.style.display='none'"><span class="tag">STREET VIEW</span></div>`:'';
-  const gallery=`<div class="card"><div class="card-h"><span class="t">📷 Photos${photos.length?' ('+photos.length+')':''}</span><button class="btn ghost sm" style="width:auto;display:inline-flex" onclick="addBuildingPhotos('${bid}')">${IC.plus}Add photos</button></div><div class="card-b"><div class="gallery">${galUser||galSample||galSv||'<p class="small-note" style="padding:6px 0">No photos yet. Real photos of the lobby, unit, or a problem help renters more than anything — add the first.</p>'}</div>${galNote}</div></div>`;
+  const galUser=photos.map(p=>`<div class="g"><img src="${p}" alt="Building photo"></div>`).join('');
+  const gallery=`<div class="card"><div class="card-h"><span class="t">📷 Photos${photos.length?' ('+photos.length+')':''}</span><button class="btn ghost sm" style="width:auto;display:inline-flex" onclick="addBuildingPhotos('${bid}')">${IC.plus}Add photos</button></div><div class="card-b"><div class="gallery">${galUser||galSample||'<p class="small-note" style="padding:6px 0">No photos yet. Real photos of the lobby, unit, or a problem help renters more than anything — add the first.</p>'}</div></div></div>`;
 
   // maintenance issues (the heat)
   const openI=openIssuesFor(bid);const maxD=openI.length?daysOpen(openI[0].date):0;
@@ -1302,27 +1482,26 @@ function viewBuilding(bid){const b=bById(bid);if(!b)return '<div class="empty">B
 
   return `<div class="bprofile">
     <div>
-      <div class="hero ${heroPhoto?'hasimg':''}" style="${gradOf(seed)}">${heroPhoto?`<img class="cover-img" src="${heroPhoto}" alt="" onerror="this.style.display='none'">`:`<span class="hero-emoji">${emoOf(seed)}</span>`}<div class="grad"></div><div class="htext"><div class="name">${esc(dn)}</div><div class="addr">${esc(custom?b.addr:(b.demo?b.addr:b.hood))}</div></div></div>
+      <div class="hero ${heroPhoto?'hasimg':''}" style="${heroPhoto?'':gradOf(seed)}">${heroPhoto?`<img class="cover-img" src="${heroPhoto}" alt="">`:`<span class="hero-emoji">${emoOf(seed)}</span>`}${heroPhoto?'':`<svg class="hero-waves" viewBox="0 0 1100 150" fill="none" preserveAspectRatio="none" aria-hidden="true"><path d="M-10 90 C 200 26, 400 26, 600 84 S 1000 132, 1110 58" stroke="#F59E2E" stroke-width="22" stroke-linecap="round"/><path d="M-10 118 C 200 54, 400 54, 600 112 S 1000 160, 1110 86" stroke="#F26B3A" stroke-width="22" stroke-linecap="round"/></svg>`}<div class="grad"></div><div class="gradeseal"><div style="text-align:center"><div class="gg">${g}</div><div class="gt">${sc>=80?'GOOD':sc>=55?'WATCH':'RISK'}</div></div></div><div class="htext"><div class="name">${esc(dn)}</div><div class="addr">${esc(custom?b.addr:(b.demo?b.addr:b.hood))}</div>${(!custom&&!b.demo)?`<button class="namebtn" onclick="nameBuilding('${bid}')">✎ Name this building</button>`:''}</div></div>
       ${hotstrip}
       <div class="card" style="margin-top:16px"><div class="card-h"><span class="t">📋 The short version</span></div><div class="card-b"><p class="summary-txt" style="margin:0">${summaryOf(b)}</p></div></div>
       ${issuesCard}
       ${dataCard}
-      ${violationsCard(b)}
       ${gettingAround}
       ${subHTML}
       ${unitCard}
       ${rentCard}
       ${gallery}
       ${reviewsSection(b)}
-      ${aroundWebCard(webName,false,b.demo?null:extWebsite(bid))}
+      ${aroundWebCard(webName,false)}
       ${(!b.demo)?neighborhoodWebCard(b.hood):''}
       <div class="card"><div class="card-b">${signupBox('building')}</div></div>
       ${qaBlock}
     </div>
     <div>
       <div class="rail-score">
-        <div class="dial" style="--sweep:${(sc/100*360).toFixed(0)}deg;--tier:${tierColor(g)}"><div class="dial-in"><div class="dial-g">${g}</div></div></div>
-        <div class="num">${sc}<small>/100</small></div><div class="lbl">Radiator Score</div>
+        <div style="display:flex;justify-content:center">${dialHTML(sc,{size:120,showLabel:true})}</div>
+        <div class="num" style="margin-top:8px">Grade <b style="color:${tierColor(g)}">${g}</b></div><div class="lbl">Radiator Score · out of 100</div>
         <div style="margin-top:12px">${flagHTML(b)}</div>
         <div class="rail-actions">
           <button class="btn primary full" onclick="go('write','${bid}')">${IC.plus}Write a review</button>
@@ -1332,8 +1511,7 @@ function viewBuilding(bid){const b=bById(bid);if(!b)return '<div class="empty">B
           <button class="btn ghost full" onclick="window.print()">${IC.print}Print report</button>
         </div>
       </div>
-      ${unitMenuCard(bid)}
-      ${(()=>{const bd=scoreBreakdown(b);return `<div class="card"><div class="card-h"><span class="t">🧮 How the ${bd.final} breaks down</span></div><div class="card-b"><div class="brk">${bd.rows.map(row=>`<div class="brow"><div class="top"><span class="nm">${row.l} <span class="wt">${row.w}%</span></span><span class="val" style="color:${tierColor(gradeOf(row.v))}">${row.v}</span></div><div class="sub">${esc(row.sub)}</div><div class="track"><i style="width:${row.v}%;background:${tierColor(gradeOf(row.v))}"></i></div></div>`).join('')}<div class="brk-sum"><span style="font-weight:700;font-size:13px">Radiator Score</span><span class="lg" style="color:${tierColor(gradeOf(bd.final))}">${bd.final}<small style="font-size:12px;color:var(--ink-faint);font-weight:600">/100</small></span></div></div><div class="src-note" style="margin-top:12px">${bd.hasR?'City records are weighted 60%, verified tenant reviews 40%.':'Based on City of Chicago records alone — the first tenant review adds the reviews component.'}</div></div></div>`;})()}
+      ${(()=>{const bd=scoreBreakdown(b);return `<div class="card"><div class="card-h"><span class="t">🧮 How the ${bd.final} breaks down</span></div><div class="card-b" style="padding-top:6px">${squiggle()}<div class="brk">${bd.rows.map(row=>`<div class="brow"><div class="top"><span class="nm">${row.l} <span class="wt">${row.w}%</span></span><span class="val" style="color:${tierColor(gradeOf(row.v))}">${row.v}</span></div><div class="sub">${esc(row.sub)}</div><div class="track"><i style="width:${row.v}%;background:${tierColor(gradeOf(row.v))}"></i></div></div>`).join('')}<div class="brk-sum"><span style="font-weight:700;font-size:13px">Radiator Score</span><span class="lg" style="color:${tierColor(gradeOf(bd.final))}">${bd.final}<small style="font-size:12px;color:var(--ink-faint);font-weight:600">/100</small></span></div></div><div class="src-note" style="margin-top:12px">${bd.hasR?'City records are weighted 60%, verified tenant reviews 40%.':'Based on City of Chicago records alone — the first tenant review adds the reviews component.'}</div></div></div>`;})()}
       ${showPort?`<div class="card"><div class="card-h"><span class="t">🏢 ${b.demo?'Managed by':'Property group'}</span></div><div class="card-b"><div style="font-weight:700;margin-bottom:4px">${esc(port.name)}</div><div class="small-note">${port.buildings.length} building${port.buildings.length===1?'':'s'} on record.</div><button class="btn outline full sm" style="margin-top:12px" onclick="go('landlord','${b.id}')">View all ${port.buildings.length} →</button></div></div>`:''}
       <div class="card"><div class="card-b"><div class="small-note">${esc(metaLine)}</div></div></div>
     </div>
@@ -1371,27 +1549,9 @@ function issueHTML(i){const dn=daysOpen(i.date);const tier=daysTier(dn);const re
 }
 function resolveIssue(id){const i=(S.issues||[]).find(x=>x.id===id);if(i){i.status='resolved';i.resolvedDate=todayISO();persist();comPush('issues',i);render();toast('Marked resolved — nice.');}}
 function addBuildingPhotos(bid){const inp=document.createElement('input');inp.type='file';inp.accept='image/*';inp.multiple=true;inp.onchange=()=>{const files=[...inp.files].slice(0,8);let pending=files.filter(f=>f.type.startsWith('image/')).length;if(!pending){toast('No image selected');return;}files.forEach(f=>{if(f.type.startsWith('image/'))shrink(f,u=>{if(!S.bphotos)S.bphotos={};(S.bphotos[bid]=S.bphotos[bid]||[]).push(u);comPush('photos',{id:'ph'+now().toString(36)+Math.floor(Math.random()*1e4).toString(36),b:bid,photo:u,by:(S.handle||'')});pending--;if(pending<=0){persist();render();toast('Photo added');}});});};inp.click();}
-/* Building names are FIXED (seeded from known building names) and cannot be
-   renamed by anyone. Only management companies can be named (see nameManager). */
+function nameBuilding(bid){const cur=(S.names&&S.names[bid])||'';const v=prompt('Name this building (e.g. "Noca Blu") so people can search it by name:',cur);if(v===null)return;if(!S.names)S.names={};const t=v.trim();if(t){S.names[bid]=t;comPush('names',{b:bid,name:t,by:(S.handle||'A neighbor')});}else delete S.names[bid];persist();render();toast(t?'Named — it\'s now searchable by name':'Name removed');}
 function wallHTML(bid,locked){return `<div class="wall"><div class="blurred">${locked.slice(0,2).map(revHTML).join('')}</div><div class="cover"><div class="lock">🔒</div><h3><span class="locked-n">${locked.length}</span> more Radiator review${locked.length===1?'':'s'} locked</h3><p>Aggregated public reviews are free. Radiator's own verified reviews unlock when you post one — or grab a pass.</p><div class="btnrow"><button class="btn primary" onclick="go('write','${bid}')">Write a review</button><button class="btn ghost" onclick="openPaywall()">Get access · $9.99</button></div></div></div>`;}
 function connectPanel(){return `<div class="connect"><div class="ct">🔗 Bring in outside reviews</div><div class="small-note">Radiator aggregates public reviews &amp; discussions from other sources so every rating lives in one place. In the live product these connect through each service's official API (Google Places, Yelp Fusion, Reddit, etc.).</div><div class="cl">${['google','yelp','reddit','apartments','facebook'].map(s=>{const S2=SOURCES[s];return `<button onclick="toast('${S2.name} connects via its official API at launch (demo)')"><span class="srcbadge ${S2.cls}">${S2.name}</span> Connect</button>`;}).join('')}</div></div>`;}
-/* ===== per-unit view (filter by floor / size — never exact unit numbers, for privacy) ===== */
-let unitFilter='all',unitFilterFor=null;
-function setUnitFilter(v){unitFilter=v;render();}
-function unitFacets(bid){const rs=reviewsFor(bid).filter(r=>!r.ext);
-  const floors=[...new Set(rs.map(r=>r.unit2&&r.unit2.floor).filter(Boolean))];
-  const beds=[...new Set(rs.filter(r=>r.beds!=null&&r.beds!=='').map(r=>String(r.beds)))].sort();
-  return {floors,beds};}
-function matchUnit(rv,f){if(!f||f==='all')return true;if(f.indexOf('floor:')===0)return !!(rv.unit2&&rv.unit2.floor===f.slice(6));if(f.indexOf('beds:')===0)return String(rv.beds)===f.slice(5);return true;}
-function unitMenuCard(bid){const uf=unitFacets(bid);const hasFacets=!!(uf.floors.length||uf.beds.length);const cur=(unitFilterFor===bid)?unitFilter:'all';
-  const btn=(v,label)=>`<button class="${cur===v?'on':''}" onclick="setUnitFilter('${v}')">${label}</button>`;
-  const filters=hasFacets?`<div class="recency" style="flex-wrap:wrap;gap:6px">
-    ${btn('all','All units')}
-    ${uf.floors.map(f=>btn('floor:'+f,esc(f))).join('')}
-    ${uf.beds.map(bd=>btn('beds:'+bd,bd==='0'?'Studio':esc(bd)+' bed')).join('')}
-  </div><div class="src-note" style="margin-top:8px">Narrows reviews by floor or size. We don't track exact unit numbers — in a small building that could identify a tenant.</div>`
-  :`<div class="recency" style="flex-wrap:wrap;gap:6px">${btn('all','All units')}</div><div class="src-note" style="margin-top:8px">Floor &amp; size filters appear here as reviews with unit info come in. We never track exact unit numbers — in a small building that could identify a tenant.</div>`;
-  return `<div class="card"><div class="card-h"><span class="t">🏠 View by unit</span></div><div class="card-b">${filters}</div></div>`;}
 function reviewsSection(b){const bid=b.id;
   const ext=(!b.demo)?_extCache[bid]:null;
   if(!b.demo)fetchExt(b);
@@ -1401,9 +1561,7 @@ function reviewsSection(b){const bid=b.id;
   const local=rec==='recent'?localAll.filter(rv=>{const y=reviewYear(rv);return y===0||y>=curYear-1;}):rec==='current'?localAll.filter(rv=>rv.status==='current'):localAll;
   const recChips=localAll.length>1?`<div class="recency"><button class="${rec==='all'?'on':''}" onclick="setRecency('all')">All time</button><button class="${rec==='recent'?'on':''}" onclick="setRecency('recent')">Last 12 mo</button><button class="${rec==='current'?'on':''}" onclick="setRecency('current')">Current tenants</button></div>`:'';
   const exReviews=(ext&&!ext.error&&ext.reviews)?ext.reviews.map((r,i)=>({id:'x'+bid+i,b:bid,src:r.source,overall:+r.rating||0,noRating:(r.rating==null),up:r.score,sentiment:r.sentiment,title:'',body:r.text||'',author:'via '+((SOURCES[r.source]||{}).name||r.source)+(r.author?' · '+r.author:''),helpful:0,photos:[],ext:true})):[];
-  const uf=(unitFilterFor===bid)?unitFilter:'all';
-  const localF=uf==='all'?local:local.filter(rv=>matchUnit(rv,uf));
-  const all=localF.concat(uf==='all'?exReviews:[]);
+  const all=local.concat(exReviews);
   const bySrc={};all.forEach(rv=>{const s=rv.src||'radiator';(bySrc[s]=bySrc[s]||[]).push(rv);});
   const connected=ext&&!ext.error;
   let combined,summary,srcN;
@@ -1425,7 +1583,6 @@ function reviewsSection(b){const bid=b.id;
   return `<div class="card"><div class="card-h"><span class="t">💬 Reviews from everywhere (${all.length})</span>${combined>0?`<span class="rating-pill">${combined.toFixed(1)} ${starsHTML(combined)}</span>`:''}</div><div class="card-b">
     ${(all.length||connected)?`<div class="small-note" style="margin-bottom:10px">Combined rating from star sources across ${srcN} source${srcN===1?'':'s'} — reviews &amp; Reddit discussions, all in one place.</div>`:''}
     ${summary}${recChips}${chips}
-    ${uf!=='all'?`<div class="pctbadge" style="margin:8px 0">🏠 Showing <b style="margin:0 2px">${uf.indexOf('floor:')===0?esc(uf.slice(6)):(uf.slice(5)==='0'?'studio':esc(uf.slice(5))+'-bed')}</b> reviews · <a onclick="setUnitFilter('all')" style="cursor:pointer;text-decoration:underline">show all units</a></div>`:''}
     <div style="margin-top:6px">${body}</div>
     <div style="margin-top:14px;text-align:right"><button class="btn primary sm" style="width:auto;display:inline-flex" onclick="go('write','${bid}')">${IC.plus}Add your review</button></div>
     ${foot}
@@ -1468,7 +1625,7 @@ function viewLandlord(bid){const b=bById(bid);if(!b)return '<div class="empty">N
 function viewCompare(){const bs=S.compare.map(bById).filter(Boolean);
   if(!bs.length)return `<h1 class="page-t">Compare buildings</h1><p class="page-sub">Line buildings up side by side on score, violations, rating and more.</p><div class="empty"><div class="em">⚖️</div><div class="t">Nothing to compare yet</div><div class="d">Tap “+ Compare” on any building card or profile to add it here (up to 6).</div><div style="margin-top:16px"><button class="btn primary" style="display:inline-flex;width:auto" onclick="tab('explore')">Browse buildings</button></div></div>`;
   const rows=[
-    {k:'Radiator Score',f:b=>{const sc=scoreOf(b);return `<span class="big">${sc}</span> <span style="color:var(--ink-faint)">${gradeOf(sc)}</span>`;}},
+    {k:'Radiator Score',f:b=>{const sc=scoreOf(b);const g=gradeOf(sc);return `<div style="display:flex;flex-direction:column;align-items:center;gap:6px">${dialHTML(sc,{size:64})}<span class="gpill ${gradeClass(g)}">${g}</span></div>`;}},
     {k:'Risk',f:b=>`<span class="flag ${RISK_CLASS[riskOf(b)]}" style="display:inline-flex"><span class="dot"></span>${RISK_LABEL[riskOf(b)]}</span>`},
     {k:'Open violations',f:b=>`<span class="big">${b.demo?b.data.viol:b.open}</span>`},
     {k:'Resolved (since ’24)',f:b=>b.demo?'—':`<span class="big">${b.fixed}</span>`},
@@ -1546,7 +1703,7 @@ let draft=null;
 function viewWrite(bid){const b=bid?bById(bid):null;
   const pick=b?`<div class="field" style="margin:0"><label>Building</label><div class="rev" style="border:none;padding:0"><div class="rhead"><div class="av">${emoOf(hashStr(b.id+b.name))}</div><div class="who"><div class="n">${esc(nameOf(b))}</div><div class="sub">${esc(b.demo?b.addr:b.hood)}</div></div></div></div></div>`
     :`<div class="field" style="margin:0"><label for="w-building">Which building?</label><div class="hint">Search a name or address, or type any Chicago address to add it.</div><input type="text" id="w-building" list="blds" value="${esc(prefillAddr)}" placeholder="Search name or address"><datalist id="blds">${(isDemo()?DEMO:REAL).slice(0,140).map(x=>`<option value="${esc(x.name)}">`).join('')}</datalist></div>`;
-  const dimRows=REVIEW_DIMS.map(d=>`<div class="md"><span class="l">${d.l}</span><div class="star-input" id="si-${d.k}">${[1,2,3,4,5].map(i=>`<button type="button" onclick="setStar('${d.k}',${i})">★</button>`).join('')}</div></div>`).join('');
+  const dimRows=REVIEW_DIMS.map(d=>`<div class="dim-slider"><div class="dh"><span>${d.l}</span><span class="dv unset" id="dv-${d.k}">—</span></div><input type="range" min="0" max="5" step="1" value="0" id="si-${d.k}" aria-label="${d.l}" oninput="setSlider('${d.k}',this.value)"></div>`).join('');
   const unitSingles=UNIT_SINGLE.map(u=>`<div class="field" style="margin:0"><label>${u.l}</label><select id="u-${u.k}"><option value="">—</option>${u.opts.map(o=>`<option value="${esc(o)}">${esc(o)}</option>`).join('')}</select></div>`).join('');
   const unitMultis=UNIT_MULTI.map(u=>`<div class="field" style="margin:0"><label>${u.l}</label><div class="chiprow" id="um-${u.k}">${u.opts.map(o=>`<button type="button" class="chiptog" onclick="toggleUnitMulti('${u.k}','${esc(o)}',this)">${esc(o)}</button>`).join('')}</div></div>`).join('');
   return `<h1 class="page-t">Review this building</h1><p class="page-sub">The more specific you are, the more you help the next renter. Only the overall rating and a few words are required — everything else is optional. Posting unlocks 30 days of full access.</p>
@@ -1554,11 +1711,7 @@ function viewWrite(bid){const b=bid?bById(bid):null;
     ${pick}<input type="hidden" id="w-bid" value="${bid||''}">
     <div class="form-group"><div class="fg-t">🪪 Your residency</div>
       <div class="grid2"><div class="field" style="margin:0"><label for="w-status">You are a…</label><select id="w-status"><option value="current">Current tenant</option><option value="former">Former tenant</option></select></div>
-        <div class="field" style="margin:0"><label>Confirm your tenancy <span style="color:var(--ink-faint);font-weight:500">(optional)</span></label><label style="display:flex;gap:8px;align-items:flex-start;font-size:12.5px;color:var(--ink-soft)"><input type="checkbox" id="w-verify" style="width:17px;height:17px;margin-top:1px;accent-color:var(--heat)"><span>I confirm I actually lived or live at this address (shown as <b>self-reported</b>).</span></label></div></div>
-      <div class="field" style="margin:12px 0 0"><label>Get a <b style="color:var(--good)">✓ Verified</b> badge <span style="color:var(--ink-faint);font-weight:500">(optional)</span></label>
-        <label class="uploader" for="w-lease">🪪 Upload a lease to verify tenancy</label>
-        <input type="file" id="w-lease" accept="image/*,application/pdf" hidden onchange="addLease(this.files)">
-        <div id="w-lease-status" class="small-note" style="margin-top:6px">Black out anything you like first — you only need the address and your name. We review it privately, mark you <b>✓ Verified</b>, then <b>delete the file</b>. It's never shown publicly.</div></div>
+        <div class="field" style="margin:0"><label>Confirm your tenancy <span style="color:var(--ink-faint);font-weight:500">(optional)</span></label><label style="display:flex;gap:8px;align-items:flex-start;font-size:12.5px;color:var(--ink-soft)"><input type="checkbox" id="w-verify" style="width:17px;height:17px;margin-top:1px;accent-color:var(--heat)"><span>I confirm I actually lived or live at this address (shown as <b>self-reported</b>). A <b>✓ Verified</b> badge — where you upload a redacted lease we review privately and delete — is coming soon.</span></label></div></div>
       <div class="grid2" style="margin-top:12px"><div class="field" style="margin:0"><label for="w-in">Lived here since (year)</label><input type="text" id="w-in" placeholder="2023" maxlength="4" inputmode="numeric"></div><div class="field" style="margin:0"><label for="w-out">Until (year, blank if current)</label><input type="text" id="w-out" placeholder="2025" maxlength="7"></div></div>
     </div>
     <div class="field" style="margin:0"><label>Overall rating <span style="color:var(--risk)">*</span></label><div class="star-input" id="si-overall">${[1,2,3,4,5].map(i=>`<button type="button" onclick="setStar('overall',${i})">★</button>`).join('')}</div></div>
@@ -1587,8 +1740,11 @@ function viewWrite(bid){const b=bid?bById(bid):null;
     <button class="btn primary full" type="button" onclick="submitReview()">Post review &amp; unlock 30 days</button>
   </form></div></div><div style="height:20px"></div>`;
 }
-function initWriteForm(){draft={overall:0,sub:{},photos:[],unit:{pests:[],nearby:[],noiseSrc:[]},would:null,surprise:null,lease:null,leaseType:null};REVIEW_DIMS.forEach(d=>draft.sub[d.k]=0);prefillAddr='';}
+function initWriteForm(){draft={overall:0,sub:{},photos:[],unit:{pests:[],nearby:[],noiseSrc:[]},would:null,surprise:null};REVIEW_DIMS.forEach(d=>draft.sub[d.k]=0);prefillAddr='';}
 function setStar(k,v){if(k==='overall')draft.overall=v;else draft.sub[k]=v;const w=$('#si-'+k);if(w)[...w.children].forEach((btn,i)=>btn.classList.toggle('on',i<v));}
+function setSlider(k,v){v=+v;draft.sub[k]=v;const inp=$('#si-'+k);const dv=$('#dv-'+k);const pct=v/5*100;const tc=tierColor(gradeOf(pct));
+  if(inp){inp.style.setProperty('--fill',pct+'%');inp.style.setProperty('--tc',tc);inp.classList.toggle('on',v>0);}
+  if(dv){dv.textContent=v>0?v+'/5':'—';dv.style.color=v>0?tc:'';dv.className='dv '+(v>0?'set':'unset');}}
 function toggleUnitMulti(k,v,el){if(!draft.unit[k])draft.unit[k]=[];const i=draft.unit[k].indexOf(v);if(i>=0){draft.unit[k].splice(i,1);el.classList.remove('on');}else{draft.unit[k].push(v);el.classList.add('on');}}
 function setWould(v,el){draft.would=v;[...el.parentNode.children].forEach(b=>b.classList.remove('on'));el.classList.add('on');}
 function setSurprise(v,el){draft.surprise=v;[...el.parentNode.children].forEach(b=>b.classList.remove('on'));el.classList.add('on');}
@@ -1610,82 +1766,9 @@ function submitReview(){let bid=$('#w-bid').value;
     yearBuilt:parseInt(val('w-year'))||0,
     moveIn:($('#w-in').value||'').trim(),moveOut:($('#w-out').value||'').trim(),status:val('w-status')||'current',
     would:draft.would,surprise:draft.surprise,unit2:Object.keys(unit2).length?unit2:null,
-    selfConfirmed:$('#w-verify').checked,verified:false,verifyPending:!!draft.lease,author:(S.handle?S.handle:'A Chicago renter'),helpful:0,photos:draft.photos.slice(),mine:true,date:now()};
+    selfConfirmed:$('#w-verify').checked,verified:false,author:(S.handle?S.handle:'A Chicago renter'),helpful:0,photos:draft.photos.slice(),mine:true,date:now()};
   S.reviews.unshift(rv);const wasLocked=!hasAccess();S.unlockedUntil=Math.max(S.unlockedUntil,now()+30*DAY);persist();comPush('reviews',rv);
-  if(draft.lease){comPush('verify',{rid:rv.id,b:bid,proof:draft.lease,ptype:draft.leaseType||'img',status:rv.status,by:rv.author});}
-  toast(draft.lease?'Review posted — verification pending 🪪':(wasLocked?'Review posted — 30 days unlocked! 🎉':'Review posted — thank you!'));nav.prev=[{view:'explore',id:null}];go('building',bid);}
-
-function addLease(files){const f=files&&files[0];if(!f)return;
-  if(f.type==='application/pdf'){const rd=new FileReader();rd.onload=()=>{if((rd.result||'').length>2000000){toast('That PDF is large — a clear photo of the lease works best');return;}draft.lease=rd.result;draft.leaseType='pdf';leaseStatus(f.name);};rd.onerror=()=>toast('Could not read that file');rd.readAsDataURL(f);}
-  else if(f.type.startsWith('image/')){shrink(f,u=>{draft.lease=u;draft.leaseType='img';leaseStatus(f.name);});}
-  else{toast('Upload a photo or PDF of your lease');}}
-function leaseStatus(name){const el=$('#w-lease-status');if(el)el.innerHTML='✅ <b>Lease attached</b> ('+esc(name).slice(0,40)+'). After you post, we review it privately, mark you <b>✓ Verified</b>, then delete it. <a onclick="clearLease()" style="cursor:pointer;text-decoration:underline">remove</a>';}
-function clearLease(){draft.lease=null;draft.leaseType=null;const i=$('#w-lease');if(i)i.value='';const el=$('#w-lease-status');if(el)el.innerHTML='Black out anything you like first — you only need the address and your name. We review it privately, mark you <b>✓ Verified</b>, then <b>delete the file</b>. It\'s never shown publicly.';}
-
-/* ============ MODERATOR — verify tenancy (private, key-gated) ============ */
-let _modKey=null,_modQueue=null,_modLoading=false,_modErr=null;
-function modKey(){if(_modKey==null){try{_modKey=localStorage.getItem('radiator.adminKey')||'';}catch(e){_modKey='';}}return _modKey;}
-function setModKey(){const v=($('#mod-key')?$('#mod-key').value:'').trim();if(!v){toast('Paste your moderator key');return;}_modKey=v;try{localStorage.setItem('radiator.adminKey',v);}catch(e){}_modQueue=null;_modErr=null;modLoad();}
-function modForget(){_modKey='';try{localStorage.removeItem('radiator.adminKey');}catch(e){}_modQueue=null;_modErr=null;render();}
-function modLoad(){if(comBase()===null){_modLoading=false;_modErr='Moderation runs on the live site (getradiator.com) only.';render();return;}
-  _modLoading=true;_modErr=null;render();
-  const base=comBase().replace(/\/+$/,'');
-  fetch(base+'/api/verify/queue?key='+encodeURIComponent(modKey()),{cache:'no-store'})
-   .then(r=>r.json().then(j=>({ok:r.ok,j})).catch(()=>({ok:false,j:{}})))
-   .then(({ok,j})=>{_modLoading=false;if(!ok){_modErr=(j&&j.error)||'Access denied — check your key';_modQueue=null;}else{_modQueue=j.items||[];_modErr=null;}render();})
-   .catch(()=>{_modLoading=false;_modErr='Network error — try Refresh';render();});}
-function modAct(id,action){const base=comBase();if(base===null)return;
-  fetch(base.replace(/\/+$/,'')+'/api/verify/'+action,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,key:modKey()})})
-   .then(r=>r.json()).then(j=>{if(j&&j.ok){toast(action==='approve'?'✓ Verified — lease deleted':'Rejected — lease deleted');modLoad();}else{toast((j&&j.error)||'Action failed');}}).catch(()=>toast('Network error'));}
-function modCard(v){const b=bById(v.b);const bname=b?(nameOf(b)||b.addr):v.b;const when=v.ts?new Date(v.ts).toLocaleDateString():'';
-  const proof=v.ptype==='pdf'?`<a href="${v.proof}" target="_blank" rel="noopener" class="btn outline sm" style="width:auto;display:inline-flex">📄 Open lease PDF in new tab</a>`:`<img src="${v.proof}" alt="lease proof" style="max-width:100%;max-height:440px;border-radius:10px;border:1px solid var(--line)">`;
-  return `<div class="card" style="margin-bottom:16px"><div class="card-h"><span class="t">${esc(bname)}</span><span class="small-note" style="color:var(--ink-faint)">${esc(v.status==='former'?'former tenant':'current tenant')}${when?' · '+esc(when):''}</span></div><div class="card-b">
-    <div class="src-note" style="margin:0 0 10px">Submitted by: <b>${esc(v.by||'—')}</b>${v.note?' · "'+esc(v.note)+'"':''}</div>
-    <div style="margin:8px 0">${proof}</div>
-    <div class="btnrow" style="margin-top:14px;gap:10px"><button class="btn primary" style="width:auto;display:inline-flex" onclick="modAct('${v.id}','approve')">✓ Approve &amp; verify</button><button class="btn outline" style="width:auto;display:inline-flex" onclick="modAct('${v.id}','reject')">Reject</button></div>
-    <p class="small-note" style="margin-top:10px">Either action permanently deletes this lease from the server.</p>
-  </div></div>`;}
-function viewModerate(){
-  if(!modKey()){
-    return `<h1 class="page-t">Moderator · verify tenancy</h1><p class="page-sub">Private queue for lease-verification requests. Enter your moderator key to continue.</p>
-    <div class="card" style="max-width:460px"><div class="card-b"><div class="field" style="margin:0"><label for="mod-key">Moderator key</label><input type="password" id="mod-key" placeholder="Paste your key" onkeydown="if(event.key==='Enter')setModKey()"><button class="btn primary full" style="margin-top:14px" onclick="setModKey()">Unlock queue</button></div><p class="small-note" style="margin-top:12px">Stored only on this device. This page is only useful to you — no one can approve verifications without the key.</p></div></div>`;
-  }
-  if(_modQueue===null && !_modLoading && !_modErr){setTimeout(modLoad,0);_modLoading=true;}
-  let body;
-  if(_modLoading){body='<p class="small-note" style="padding:8px 0">Loading queue…</p>';}
-  else if(_modErr){body=`<div class="empty" style="padding:26px"><div class="em">🔒</div><div class="t">${esc(_modErr)}</div><div style="margin-top:14px"><button class="btn outline" style="width:auto;display:inline-flex" onclick="modForget()">Enter a different key</button></div></div>`;}
-  else if(!_modQueue||!_modQueue.length){body=`<div class="empty" style="padding:26px"><div class="em">✅</div><div class="t">Nothing pending</div><div class="d">Lease-verification requests appear here for you to approve or reject. Approving adds the ✓ Verified badge to the tenant's review and deletes the lease.</div></div>`;}
-  else{body=_modQueue.map(modCard).join('');}
-  return `<h1 class="page-t">Moderator · verify tenancy</h1><p class="page-sub">${(_modQueue&&_modQueue.length)?_modQueue.length+' request'+(_modQueue.length===1?'':'s')+' pending. ':''}Approving marks the review <b>✓ Verified</b> and permanently deletes the uploaded lease.</p>
-  <div style="margin-bottom:14px;display:flex;gap:10px"><button class="btn ghost sm" style="width:auto;display:inline-flex" onclick="modLoad()">↻ Refresh</button><button class="btn ghost sm" style="width:auto;display:inline-flex" onclick="modForget()">Lock</button></div>
-  ${body}`;
-}
-function setStar(k,v){if(k==='overall')draft.overall=v;else draft.sub[k]=v;const w=$('#si-'+k);if(w)[...w.children].forEach((btn,i)=>btn.classList.toggle('on',i<v));}
-function toggleUnitMulti(k,v,el){if(!draft.unit[k])draft.unit[k]=[];const i=draft.unit[k].indexOf(v);if(i>=0){draft.unit[k].splice(i,1);el.classList.remove('on');}else{draft.unit[k].push(v);el.classList.add('on');}}
-function setWould(v,el){draft.would=v;[...el.parentNode.children].forEach(b=>b.classList.remove('on'));el.classList.add('on');}
-function setSurprise(v,el){draft.surprise=v;[...el.parentNode.children].forEach(b=>b.classList.remove('on'));el.classList.add('on');}
-function addPhotos(files){const arr=[...files].slice(0,6-draft.photos.length);arr.forEach(f=>{if(f.type.startsWith('image/'))shrink(f,u=>{draft.photos.push(u);renderThumbs();});});}
-function shrink(file,cb){const img=new Image();const url=URL.createObjectURL(file);img.onload=()=>{const max=900;let w=img.width,h=img.height;if(w>h&&w>max){h=h*max/w;w=max;}else if(h>max){w=w*max/h;h=max;}const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);URL.revokeObjectURL(url);try{cb(c.toDataURL('image/jpeg',0.68));}catch(e){toast('Could not add that photo');}};img.onerror=()=>{URL.revokeObjectURL(url);toast('Could not read that image');};img.src=url;}
-function renderThumbs(){const el=$('#w-thumbs');if(el)el.innerHTML=draft.photos.map((p,i)=>`<div class="th"><img src="${p}" alt=""><button type="button" onclick="rmPhoto(${i})">✕</button></div>`).join('');}
-function rmPhoto(i){draft.photos.splice(i,1);renderThumbs();}
-function submitReview(){let bid=$('#w-bid').value;
-  if(!bid){const raw=($('#w-building')?$('#w-building').value:'').trim();if(!raw){toast('Add a building or address');return;}const pool=isDemo()?DEMO:REAL;const m=pool.find(x=>raw.toLowerCase()===x.name.toLowerCase())||pool.find(x=>raw.toLowerCase().includes(x.addr.toLowerCase().slice(0,14)));if(m)bid=m.id;else{bid='u'+now().toString(36);S.userBuildings.push({id:bid,real:true,name:raw,addr:raw,hood:'Chicago',open:0,fixed:0,last:'',lat:null,lng:null,pg:'',cats:[]});}}
-  const overall=draft.overall;if(!overall){toast('Add an overall star rating');return;}
-  const body=($('#w-body').value||'').trim();if(body.length<12){toast('Tell us a bit more in the review');return;}
-  const val=id=>{const e=$('#'+id);return e?e.value:'';};
-  const unit2={};UNIT_SINGLE.forEach(u=>{const v=val('u-'+u.k);if(v)unit2[u.k]=v;});['pests','nearby','noiseSrc'].forEach(k=>{if(draft.unit[k]&&draft.unit[k].length)unit2[k]=draft.unit[k].filter(x=>x!=='None').length?draft.unit[k].slice():draft.unit[k].slice();});
-  const pt=val('w-parktype');if(pt)unit2.parkingType=pt;
-  const bedsRaw=val('w-beds');const beds=bedsRaw===''?null:parseInt(bedsRaw);
-  const rv={id:'u'+now().toString(36)+Math.floor(Math.random()*1e4).toString(36),b:bid,overall,sub:Object.assign({},draft.sub),
-    title:($('#w-title').value||'').trim(),body,wish:($('#w-wish').value||'').trim(),
-    rent:parseInt(val('w-rent'))||0,beds,renewalPct:parseInt(val('w-renewal'))||0,moveInFee:parseInt(val('w-movein'))||0,parking:parseInt(val('w-parking'))||0,petFee:parseInt(val('w-pet'))||0,
-    yearBuilt:parseInt(val('w-year'))||0,
-    moveIn:($('#w-in').value||'').trim(),moveOut:($('#w-out').value||'').trim(),status:val('w-status')||'current',
-    would:draft.would,surprise:draft.surprise,unit2:Object.keys(unit2).length?unit2:null,
-    selfConfirmed:$('#w-verify').checked,verified:false,verifyPending:!!draft.lease,author:(S.handle?S.handle:'A Chicago renter'),helpful:0,photos:draft.photos.slice(),mine:true,date:now()};
-  S.reviews.unshift(rv);const wasLocked=!hasAccess();S.unlockedUntil=Math.max(S.unlockedUntil,now()+30*DAY);persist();comPush('reviews',rv);
-  if(draft.lease){comPush('verify',{rid:rv.id,b:bid,proof:draft.lease,ptype:draft.leaseType||'img',status:rv.status,by:rv.author});}
-  toast(draft.lease?'Review posted — verification pending 🪪':(wasLocked?'Review posted — 30 days unlocked! 🎉':'Review posted — thank you!'));nav.prev=[{view:'explore',id:null}];go('building',bid);}
+  toast(wasLocked?'Review posted — 30 days unlocked! 🎉':'Review posted — thank you!');nav.prev=[{view:'explore',id:null}];go('building',bid);}
 
 /* ============ REPORT ISSUE ============ */
 let issueDraft=null;
@@ -1797,5 +1880,6 @@ $('#app').innerHTML='<div style="padding:70px 24px;text-align:center;color:var(-
     document.addEventListener('visibilitychange',()=>{if(!document.hidden)comPull();});}
 })();
 </script>
+
 </body>
 </html>
