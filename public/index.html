@@ -1528,6 +1528,7 @@ function setRecency(r){reviewRecency=r;reviewRecencyFor=nav.id;render();}
 /* ============ MAP ============ */
 let mapHood='all',mapRisk='all';
 let _mapz=null; // zoom/pan controller set by drawMap()
+let mapViewState=null; // persists zoom/pan across re-renders (e.g. background community refresh) so the view doesn't snap back
 function mapZoom(k){if(_mapz&&_mapz[k])_mapz[k]();}
 function setMapFilter(k,v){if(k==='hood')mapHood=v;else if(k==='risk')mapRisk=v;render();}
 function viewMap(){
@@ -1561,7 +1562,11 @@ function drawMap(mountId){const mount=$('#'+mountId);if(!mount||!CHI.hoods||!CHI
   // ---- interactive zoom / pan (lightweight, no external library) ----
   const svg=mount.querySelector('svg');
   const MAXZ=10;
-  const view={x:0,y:0,w:W,h:H};
+  // Restore the prior zoom/pan when this is a re-render of the SAME filtered view
+  // (a background community refresh calls render()); reset to full extent when the
+  // neighborhood/risk filter changed.
+  const keep=mapViewState&&mapViewState.hood===mapHood&&mapViewState.risk===mapRisk;
+  const view=keep?{x:mapViewState.x,y:mapViewState.y,w:mapViewState.w,h:mapViewState.h}:{x:0,y:0,w:W,h:H};
   const pins=asPins?Array.from(svg.querySelectorAll('.bpin')):[];
   const clamp=(v,a,b)=>v<a?a:(v>b?b:v);
   let lastPinZ=1;
@@ -1573,6 +1578,7 @@ function drawMap(mountId){const mount=$('#'+mountId);if(!mount||!CHI.hoods||!CHI
     const z=W/view.w;
     if(pins.length && Math.abs(z-lastPinZ)>0.002){for(const g of pins){g.setAttribute('transform',`translate(${g.dataset.x},${g.dataset.y}) scale(${(+g.dataset.k/z).toFixed(3)})`);}lastPinZ=z;}
     svg.style.touchAction=(view.w<W-0.5||view.h<H-0.5)?'none':'pan-y';
+    mapViewState={hood:mapHood,risk:mapRisk,x:view.x,y:view.y,w:view.w,h:view.h}; // remember across re-renders
     updateBtns(z);
   }
   function zoomAt(f,cx,cy){const nw=clamp(view.w/f,W/MAXZ,W);const nh=nw*(H/W);view.x=cx-(cx-view.x)*(nw/view.w);view.y=cy-(cy-view.y)*(nh/view.h);view.w=nw;view.h=nh;applyZoom();}
