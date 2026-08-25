@@ -154,19 +154,25 @@ function mount(app, getAppBody) {
     if (!b) return res.status(404).send(notFound(getAppBody(), origin(req), req.path));
     const o = origin(req);
     const canonical = o + '/building/' + b.id + '/' + slug(b.addr);
-    const sc = scoreOf(b), g = gradeOf(sc);
+    // NOTE: the snapshot fields (b.open/b.fixed and any score/grade derived from
+    // them) are a periodic build-time City-records snapshot that the hydrated
+    // client replaces with a LIVE per-building lookup. They diverge (a snapshot
+    // "0 open / grade A" building can be "3 open / grade B" live), so they are
+    // deliberately NOT rendered in server HTML or JSON-LD — the SSR states only
+    // stable facts (address, neighborhood, management, that City records exist)
+    // and the live counts load on the page. Truthfulness over a richer snippet.
     const name = nameOfBuilding(b); // friendly name when seeded, else the address (matches the client)
     const named = name !== b.addr;
     const siblings = (byHood.get(b.hood) || []).filter(x => x.id !== b.id).slice(0, 8);
     const title = `${name}, ${b.hood} — reviews & city records | Radiator`;
-    const desc = `${b.addr} in ${b.hood}, Chicago: Radiator Score ${sc}/100 (${g}). ${b.open} open building violations, ${b.fixed} resolved on file with the City of Chicago. See tenant reviews, rent history, transit and maintenance issues before you sign.`;
+    const desc = `${b.addr} in ${b.hood}, Chicago. See City of Chicago building-violation records, tenant reviews, rent history, transit and open maintenance issues for this building on Radiator — the current open and resolved counts load live on the page. Check it before you sign.`;
     const ssr = `<h1>${esc(name)}</h1>${named ? `\n<p>${esc(b.addr)}, ${esc(b.hood)}</p>` : ''}
-<p><span class="g">${g}</span> Radiator Score <strong>${sc}/100</strong> — built from real City of Chicago records${b.open ? ' and tenant reviews' : ''}.</p>
-<p>This ${esc(b.hood)} building has <strong>${b.open} open building violation${b.open === 1 ? '' : 's'}</strong> and <strong>${b.fixed} resolved</strong> on file with the City of Chicago. On Radiator you can read verified tenant reviews, rent &amp; fee history, transit and parking, and any open maintenance issues for ${esc(b.addr)} — and see what renters say about it across Reddit, Google and Yelp — before you sign a lease.</p>
+<p>${esc(b.addr)} is a building in ${esc(b.hood)}, Chicago with building-code records on file with the City of Chicago (Building Violations dataset 22u3-xenr).</p>
+<p>Open ${esc(b.addr)} on Radiator to see its <strong>current</strong> open and resolved City-violation counts — pulled live from the City of Chicago when the page loads — along with verified tenant reviews, rent &amp; fee history, transit and parking, and any open maintenance issues, and what renters say across Reddit, Google and Yelp, before you sign a lease.</p>
 <p><a href="${o}/">Open ${esc(b.addr)} on Radiator →</a></p>
 ${b.pg ? `<p>Managed as part of <a href="${o}/company/${esc(b.pg)}">Chicago property group #${esc(b.pg)}</a>.</p>` : ''}
 <p>More buildings in <a href="${o}/neighborhood/${slug(b.hood)}">${esc(b.hood)}</a>:</p>
-<ul>${siblings.map(x => `<li><a href="${o}/building/${x.id}/${slug(x.addr)}">${esc(x.addr)}</a> — ${x.open} open violation${x.open === 1 ? '' : 's'}</li>`).join('')}</ul>
+<ul>${siblings.map(x => `<li><a href="${o}/building/${x.id}/${slug(x.addr)}">${esc(x.addr)}</a></li>`).join('')}</ul>
 <p><a href="${o}/">Radiator — check any Chicago building before you sign</a></p>`;
     const jsonld = {
       '@context': 'https://schema.org', '@type': 'ApartmentComplex', name: name,
@@ -183,16 +189,17 @@ ${b.pg ? `<p>Managed as part of <a href="${o}/company/${esc(b.pg)}">Chicago prop
     if (!bs || !bs.length) return res.status(404).send(notFound(getAppBody(), origin(req), req.path));
     const o = origin(req);
     const canonical = o + '/company/' + req.params.pg;
-    const totOpen = bs.reduce((a, x) => a + x.open, 0);
+    // Snapshot open-counts are omitted here for the same reason as the building
+    // page (periodic snapshot diverges from the live per-building count).
     const hoods = [...new Set(bs.map(x => x.hood))].slice(0, 6);
     const title = `Chicago property group #${req.params.pg} — ${bs.length} buildings, landlord reviews | Radiator`;
-    const desc = `A Chicago landlord/management portfolio of ${bs.length} buildings with ${totOpen} open building violations across ${hoods.length} neighborhood(s). See reviews, violation history and tenant experiences for every building on Radiator.`;
+    const desc = `A Chicago landlord/management portfolio of ${bs.length} buildings across ${hoods.length} neighborhood(s). See City of Chicago violation records, reviews and tenant experiences for every building on Radiator.`;
     const ssr = `<h1>Chicago property group #${esc(req.params.pg)}</h1>
-<p><strong>${bs.length} buildings</strong> · <strong>${totOpen} open building violations</strong> on file with the City of Chicago · ${hoods.map(esc).join(', ')}.</p>
-<p>Radiator groups these buildings under one management/ownership portfolio so you can see a landlord's whole track record — not just one address. Look them up across Reddit, Google and Yelp, and read tenant reviews for each building.</p>
+<p><strong>${bs.length} buildings</strong> with City of Chicago building-code records · ${hoods.map(esc).join(', ')}.</p>
+<p>Radiator groups these buildings under one management/ownership portfolio so you can see a landlord's whole track record — not just one address. Open any building for its current, live City-violation counts, look them up across Reddit, Google and Yelp, and read tenant reviews.</p>
 <p><a href="${o}/">Open this portfolio on Radiator →</a></p>
 <p>Buildings in this portfolio:</p>
-<ul>${bs.slice(0, 40).map(x => `<li><a href="${o}/building/${x.id}/${slug(x.addr)}">${esc(x.addr)}</a>, ${esc(x.hood)} — ${x.open} open violation${x.open === 1 ? '' : 's'}</li>`).join('')}</ul>`;
+<ul>${bs.slice(0, 40).map(x => `<li><a href="${o}/building/${x.id}/${slug(x.addr)}">${esc(x.addr)}</a>, ${esc(x.hood)}</li>`).join('')}</ul>`;
     const jsonld = { '@context': 'https://schema.org', '@type': 'Organization', name: 'Chicago property group #' + req.params.pg, url: canonical, areaServed: 'Chicago, IL' };
     res.set('Cache-Control', 'public, max-age=600');
     res.send(shell(getAppBody(), { title, desc, canonical, jsonld, ssr, robots: isPreview(req) ? PREVIEW_ROBOTS : undefined }));
@@ -234,9 +241,9 @@ ${b.pg ? `<p>Managed as part of <a href="${o}/company/${esc(b.pg)}">Chicago prop
     const title = `${hood}, Chicago — apartment reviews & building records | Radiator`;
     const desc = `Check ${bs.length} ${hood} buildings on Radiator: real City of Chicago violation records, tenant reviews, rent history and transit. Find a good apartment in ${hood} before you sign.`;
     const ssr = `<h1>${esc(hood)}, Chicago apartments</h1>
-<p>Radiator tracks <strong>${bs.length} buildings</strong> in ${esc(hood)} with their real City of Chicago violation records and tenant reviews. Check any building before you sign a lease.</p>
+<p>Radiator tracks <strong>${bs.length} buildings</strong> in ${esc(hood)} with their City of Chicago building-violation records and tenant reviews. Open any building for its current, live City-violation counts, and check it before you sign a lease.</p>
 <p><a href="${o}/">Explore ${esc(hood)} on Radiator →</a></p>
-<ul>${bs.slice(0, 60).map(x => `<li><a href="${o}/building/${x.id}/${slug(x.addr)}">${esc(x.addr)}</a> — ${x.open} open violation${x.open === 1 ? '' : 's'}</li>`).join('')}</ul>`;
+<ul>${bs.slice(0, 60).map(x => `<li><a href="${o}/building/${x.id}/${slug(x.addr)}">${esc(x.addr)}</a></li>`).join('')}</ul>`;
     res.set('Cache-Control', 'public, max-age=600');
     res.send(shell(getAppBody(), { title, desc, canonical, jsonld: { '@context': 'https://schema.org', '@type': 'Place', name: hood + ', Chicago', url: canonical }, ssr, robots: isPreview(req) ? PREVIEW_ROBOTS : undefined }));
   });

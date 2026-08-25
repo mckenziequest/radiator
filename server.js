@@ -206,6 +206,78 @@ app.get('/api/streetview', async (req, res) => {
 // address, from the open-data portal (dataset 22u3-xenr). Cached 12h.
 // ============================================================================
 const violCache = new Map();
+const VIOL_DATASET = '22u3-xenr';
+// Real City endpoint. Overridable ONLY for deterministic tests (CHI_VIOL_BASE);
+// unset in production, so it always uses the real Socrata dataset.
+const VIOL_BASE = process.env.CHI_VIOL_BASE || ('https://data.cityofchicago.org/resource/' + VIOL_DATASET + '.json');
+const VIOL_SOURCE = 'City of Chicago Building Violations (dataset ' + VIOL_DATASET + ')';
+const DETAIL_LIMIT = 60; // only the newest N detail rows are shown; the EXACT totals come from a separate count query.
+
+// Centralized status classifier. The whole dataset uses exactly three statuses
+// today — OPEN, COMPLIED, NO ENTRY — but anything unrecognized is surfaced as
+// 'unknown' rather than silently miscounted. Count totals and the detail-row
+// badges both go through this, so they can never disagree.
+function classifyStatus(s) {
+  const t = String(s == null ? '' : s).trim().toUpperCase();
+  if (t === 'OPEN' || t === 'CITED') return 'open';
+  if (t === 'COMPLIED' || t === 'CLOSED') return 'resolved';
+  if (t === 'NO ENTRY') return 'noEntry';
+  return 'unknown';
+}
+
+// --- Address normalization to the City's exact fields --------------------
+// The dataset stores street_number, street_direction (always N/S/E/W),
+// street_name (FULL name, e.g. "GREEN BAY"; ordinals kept verbatim, e.g. "35TH")
+// and street_type (AVE/ST/BLVD/PL/RD/DR/PKWY/CT/TER/HWY/LN/PLZ/WAY/EXPY, or absent).
+// We match on ALL supplied components EXACTLY (no first-token prefix), so records
+// for N vs S, E vs W, similar names, or different street types can never combine.
+const DIR_MAP = { N: 'N', NORTH: 'N', S: 'S', SOUTH: 'S', E: 'E', EAST: 'E', W: 'W', WEST: 'W' };
+const TYPE_MAP = { ST: 'ST', STREET: 'ST', AVE: 'AVE', AV: 'AVE', AVENUE: 'AVE', BLVD: 'BLVD', BOULEVARD: 'BLVD', RD: 'RD', ROAD: 'RD', DR: 'DR', DRIVE: 'DR', PL: 'PL', PLACE: 'PL', CT: 'CT', COURT: 'CT', PKWY: 'PKWY', PARKWAY: 'PKWY', HWY: 'HWY', HIGHWAY: 'HWY', TER: 'TER', TERRACE: 'TER', LN: 'LN', LANE: 'LN', PLZ: 'PLZ', PLAZA: 'PLZ', WAY: 'WAY', EXPY: 'EXPY', EXPRESSWAY: 'EXPY' };
+const sq = v => String(v == null ? '' : v).replace(/'/g, "''"); // escape single quotes for SoQL
+function parseAddress(raw) {
+  let s = String(raw || '').toUpperCase().replace(/[.,]/g, ' ').replace(/\s+/g, ' ').trim();
+  s = s.replace(/\s+(STE|SUITE|UNIT|APT|APARTMENT|FL|FLOOR|RM|ROOM|#)\b.*$/, '').trim(); // drop unit/suite
+  const m = s.match(/^(\d+)\s+(.+)$/);
+  if (!m) return null;
+  const number = m[1];
+  let toks = m[2].split(' ').filter(Boolean);
+  let dir = '';
+  if (toks.length >= 2 && DIR_MAP[toks[0]] !== undefined) { dir = DIR_MAP[toks[0]]; toks = toks.slice(1); } // leading direction
+  let type = '';
+  if (toks.length >= 2 && TYPE_MAP[toks[toks.length - 1]] !== undefined) { type = TYPE_MAP[toks[toks.length - 1]]; toks = toks.slice(0, -1); } // trailing type
+  const name = toks.join(' ').trim();
+  if (!name) return null;
+  return { number, dir, type, name };
+}
+function titleWord(w) { return /^\d/.test(w) ? w.replace(/(\d+)(ST|ND|RD|TH)$/i, (m, d, s) => d + s.toLowerCase()) : (w.charAt(0) + w.slice(1).toLowerCase()); }
+function formatMatched(number, dir, name, type) { return [number, dir, name.split(' ').map(titleWord).join(' '), type ? titleWord(type) : ''].filter(Boolean).join(' '); }
+// The base $where over number + FULL name only; the grouped aggregate over this
+// reveals every (direction,type) combo so collisions can be detected.
+function baseWhere(p) { return `street_number='${sq(p.number)}' AND upper(street_name)=upper('${sq(p.name)}')`; }
+// The FINAL exact $where for a single accepted (direction,type) — used identically
+// by both the count derivation and the detail query.
+function acceptedWhere(p, dir, type) {
+  const parts = [`street_number='${sq(p.number)}'`, `upper(street_name)=upper('${sq(p.name)}')`, `street_direction='${sq(dir)}'`];
+  parts.push(type ? `street_type='${sq(type)}'` : 'street_type IS NULL');
+  return parts.join(' AND ');
+}
+// Resolve the requested address to ONE unambiguous (direction,type) combo, or an
+// ambiguous/none verdict. Never combines multiple combos.
+function resolveMatch(p, combos) {
+  const live = combos.filter(c => c.total > 0);
+  if (!live.length) return { confidence: 'none', hasRecords: false };            // no violation records on file
+  let cand = live.filter(c => (!p.dir || c.dir === p.dir) && (!p.type || c.type === p.type));
+  if (cand.length === 1) return { confidence: (p.dir && p.type) ? 'exact' : 'normalized', accepted: cand[0], hasRecords: true };
+  if (cand.length > 1) return { confidence: 'ambiguous', hasRecords: true };      // supplied constraints still leave >1 combo
+  // cand === 0: the supplied direction/type matched no existing record for this number+name
+  return { confidence: 'none', hasRecords: true, mismatch: true };
+}
+async function socrataJson(params, ms = 25000) {
+  const r = await fetch(VIOL_BASE + '?' + params, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(ms) });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+
 app.get('/api/violations', async (req, res) => {
   const address = (req.query.address || '').toString().trim();
   if (!address) return res.status(400).json({ error: 'address required' });
@@ -213,37 +285,73 @@ app.get('/api/violations', async (req, res) => {
   const hit = violCache.get(key);
   if (hit && Date.now() - hit.t < TTL_MS) return res.json(hit.v);
 
-  // Parse "540 N STATE St" -> number 540, name STATE (dataset stores name w/o type/dir).
-  const m = address.match(/^\s*(\d+)\s+([NSEW])?\s*(.+?)\s*$/i);
-  if (!m) return res.json({ violations: [], count: 0 });
-  const num = m[1];
-  // strip a leading direction + trailing street-type words for a forgiving match
-  let core = m[3].replace(/\b(st|street|ave|avenue|blvd|boulevard|dr|drive|rd|road|ct|court|pl|place|ln|lane|ter|terrace|pkwy|parkway|way|sq|square)\b\.?/gi, '').trim();
-  const nameLike = core.split(/\s+/)[0] || core; // first token of the street name
-  try {
-    const soql =
-      "$where=" + encodeURIComponent(`street_number='${num}' AND upper(street_name) like upper('${nameLike.replace(/'/g, "''")}%')`) +
-      "&$order=" + encodeURIComponent('violation_date DESC') +
-      "&$limit=60";
-    const url = 'https://data.cityofchicago.org/resource/22u3-xenr.json?' + soql;
-    const rows = await (await fetch(url, { headers: { 'Accept': 'application/json' } })).json();
-    const list = (Array.isArray(rows) ? rows : []).map((r) => ({
-      date: (r.violation_date || '').slice(0, 10),
-      status: r.violation_status || 'OPEN',
-      statusDate: (r.violation_status_date || '').slice(0, 10) || null,
-      code: r.violation_code || null,
-      desc: r.violation_description || r.violation_ordinance || 'Building code violation',
-      detail: r.violation_inspector_comments || r.violation_ordinance || '',
-      dept: r.department_bureau || null,
-    }));
-    const open = list.filter((v) => !/COMPLIED|NO ENTRY|CLOSED/i.test(v.status)).length;
-    const out = { address, count: list.length, open, resolved: list.length - open, violations: list };
-    violCache.set(key, { t: Date.now(), v: out });
-    res.json(out);
-  } catch (e) {
-    console.error('violations fetch failed:', e.message);
-    res.json({ violations: [], count: 0, error: 'lookup failed' });
+  const fetchedAt = new Date().toISOString();
+  const nullOut = (extra) => ({ address, matchedAddress: null, open: null, resolved: null, noEntry: null, unclassified: {}, total: null, countsComplete: false, violations: [], count: 0, detailsReturned: 0, detailsTotal: null, detailsTruncated: false, fetchedAt, source: VIOL_SOURCE, ...extra });
+
+  const p = parseAddress(address);
+  if (!p) return res.json(nullOut({ matchConfidence: 'none', noMatch: true, message: 'That address could not be read.' }));
+
+  // Aggregate over number + FULL name, grouped by (direction, type, status). This
+  // exposes every collision (N/S, E/W, same name different type) AND gives exact
+  // per-combo status counts in ONE query.
+  let aggRows;
+  try { aggRows = await socrataJson('$select=street_direction,street_type,violation_status,count(1) as n&$where=' + encodeURIComponent(baseWhere(p)) + '&$group=street_direction,street_type,violation_status'); }
+  catch (e) { console.error('violations count failed:', e && e.message); return res.json(nullOut({ matchConfidence: null, error: 'lookup failed' })); } // keep snapshot; never zero
+
+  const byCombo = new Map();
+  for (const r of (Array.isArray(aggRows) ? aggRows : [])) {
+    const dir = r.street_direction || '', type = r.street_type || '', st = r.violation_status, n = Number(r.n) || 0;
+    const k = dir + '|' + type; if (!byCombo.has(k)) byCombo.set(k, { dir, type, statuses: {}, total: 0 });
+    const cc = byCombo.get(k); cc.statuses[st] = (cc.statuses[st] || 0) + n; cc.total += n;
   }
+  const combos = [...byCombo.values()];
+  const match = resolveMatch(p, combos);
+
+  // Ambiguous OR a supplied direction/type that matched nothing → do NOT combine,
+  // do NOT count, do NOT overwrite the client's snapshot/score.
+  if (match.confidence === 'ambiguous' || (match.confidence === 'none' && match.mismatch)) {
+    const out = nullOut({ matchConfidence: match.confidence, message: match.confidence === 'ambiguous' ? 'Radiator could not confidently match this address to a single City of Chicago record.' : 'Radiator could not find this exact address in the City of Chicago records.' });
+    violCache.set(key, { t: Date.now(), v: out }); return res.json(out);
+  }
+
+  // No records at all → the address has no City building-violation records on file
+  // (a clean address). 0 is the EXACT truth here.
+  if (match.confidence === 'none' && !match.hasRecords) {
+    const out = { address, matchedAddress: formatMatched(p.number, p.dir, p.name, p.type) || null, matchConfidence: 'none', open: 0, resolved: 0, noEntry: 0, unclassified: {}, total: 0, countsComplete: true, violations: [], count: 0, detailsReturned: 0, detailsTotal: 0, detailsTruncated: false, fetchedAt, source: VIOL_SOURCE };
+    violCache.set(key, { t: Date.now(), v: out }); return res.json(out);
+  }
+
+  // Accepted single combo (exact or normalized): exact counts from its statuses.
+  const acc = match.accepted;
+  const b = { open: 0, resolved: 0, noEntry: 0 }; const unclassified = {};
+  for (const [st, n] of Object.entries(acc.statuses)) { const cls = classifyStatus(st); if (cls === 'unknown') unclassified[st] = (unclassified[st] || 0) + n; else b[cls] += n; }
+  const total = b.open + b.resolved + b.noEntry + Object.values(unclassified).reduce((a, x) => a + x, 0);
+
+  // DETAIL list uses the IDENTICAL accepted match (number + full name + dir + type).
+  const d = await socrataJson('$select=id,violation_date,violation_status,violation_status_date,violation_code,violation_description,violation_ordinance,violation_inspector_comments,department_bureau&$where=' + encodeURIComponent(acceptedWhere(p, acc.dir, acc.type)) + '&$order=' + encodeURIComponent('violation_date DESC') + '&$limit=' + DETAIL_LIMIT)
+    .then(rows => {
+      const seen = new Set(); const list = [];
+      for (const r of (Array.isArray(rows) ? rows : [])) {
+        if (r.id != null) { if (seen.has(r.id)) continue; seen.add(r.id); }
+        list.push({ id: r.id != null ? String(r.id) : null, date: (r.violation_date || '').slice(0, 10), status: r.violation_status || 'OPEN', statusDate: (r.violation_status_date || '').slice(0, 10) || null, code: r.violation_code || null, desc: r.violation_description || r.violation_ordinance || 'Building code violation', detail: r.violation_inspector_comments || r.violation_ordinance || '', dept: r.department_bureau || null });
+      }
+      return { ok: true, list };
+    })
+    .catch(e => ({ ok: false, error: String(e && e.message || e), list: [] }));
+
+  const details = d.ok ? d.list : [];      // detail failure keeps the EXACT counts (countsComplete stays true)
+  const detailsReturned = details.length;
+  const out = {
+    address, matchedAddress: formatMatched(p.number, acc.dir, p.name, acc.type),
+    matchConfidence: match.confidence,      // 'exact' | 'normalized'
+    open: b.open, resolved: b.resolved, noEntry: b.noEntry, unclassified,
+    total, countsComplete: true,
+    violations: details, count: detailsReturned,
+    detailsReturned, detailsTotal: total, detailsTruncated: total > detailsReturned,
+    fetchedAt, source: VIOL_SOURCE,
+  };
+  violCache.set(key, { t: Date.now(), v: out });
+  res.json(out);
 });
 
 // ---- shared community content (reviews, issues, Q&A, names, photos) ----
