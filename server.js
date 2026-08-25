@@ -31,17 +31,41 @@ app.use(express.json({ limit: '12mb' })); // room for base64 photos
 const PORT = process.env.PORT || 8787;
 const TTL_MS = (Number(process.env.CACHE_HOURS) || 12) * 3600 * 1000;
 
-// --- CORS: the app is same-origin (page + API share a host), so no CORS header
-//     is needed by default. Advertise it ONLY when an origin is explicitly
-//     configured — an UNSET CORS_ORIGIN means same-origin, never '*'. ---
-const ALLOW = process.env.CORS_ORIGIN || '';
+// --- CORS: the app is same-origin (page + API share a host), so same-origin
+//     requests need NO CORS header and get none. Cross-origin access is opt-in
+//     via an EXACT allowlist in CORS_ORIGIN (comma-separated origins). A literal
+//     '*' is treated as INVALID/disabled — it is never reflected as
+//     `Access-Control-Allow-Origin: *`, so a wildcard left in config can never
+//     expose the write/admin endpoints to every origin. An untrusted origin
+//     receives no permissive header; preflight (OPTIONS) follows the same rule.
+function parseCorsAllowlist(raw) {
+  return new Set(
+    String(raw || '')
+      .split(',')
+      .map(s => s.trim().replace(/\/+$/, '').toLowerCase()) // normalize: trim, strip trailing slash, lowercase
+      .filter(o => o && o !== '*')                          // drop blanks and the wildcard
+  );
+}
+const CORS_RAW = process.env.CORS_ORIGIN || '';
+const CORS_WILDCARD = /(^|,)\s*\*\s*(,|$)/.test(CORS_RAW);
+const CORS_ALLOW = parseCorsAllowlist(CORS_RAW);
+if (CORS_WILDCARD) {
+  // Non-secret warning only — no origin value, no secret.
+  console.warn('CORS_ORIGIN contains "*", which is IGNORED for safety. Set explicit origins to allow cross-origin access, or leave it unset for same-origin only.');
+}
 app.use((req, res, next) => {
-  if (ALLOW) {
-    res.set('Access-Control-Allow-Origin', ALLOW);
-    res.set('Access-Control-Allow-Headers', 'Content-Type');
-    res.set('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  const origin = req.headers.origin;
+  if (origin) {
+    const norm = origin.replace(/\/+$/, '').toLowerCase();
+    if (CORS_ALLOW.has(norm)) {
+      res.set('Access-Control-Allow-Origin', origin); // echo the exact allowed origin, never '*'
+      res.set('Vary', 'Origin');
+      res.set('Access-Control-Allow-Headers', 'Content-Type, X-Admin-Key');
+      res.set('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+    }
+    // Untrusted / unlisted origin → no Access-Control-* header at all.
   }
-  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  if (req.method === 'OPTIONS') return res.sendStatus(204); // preflight ends here; the header above (if any) governs it
   next();
 });
 
@@ -394,9 +418,9 @@ app.listen(PORT, () => {
   console.log(`Radiator app + API on :${PORT}  (mock=${process.env.MOCK === '1'}, store=${store.HAS_PG ? 'postgres' : 'json-file'})`);
   // Non-secret beta-safety summary — confirms at a glance that the free-beta gates
   // are the SERVER's, not a client flag. Never logs any secret VALUE, only on/off.
-  const payments = process.env.STRIPE_SECRET_KEY ? 'ENABLED (Stripe key set)' : 'disabled';
+  const payments = (process.env.PAYMENTS_ENABLED === '1' && process.env.STRIPE_SECRET_KEY) ? 'ENABLED (PAYMENTS_ENABLED=1 + STRIPE_SECRET_KEY)' : 'disabled (needs PAYMENTS_ENABLED=1 + STRIPE_SECRET_KEY → /api/checkout 503)';
   const lease = process.env.LEASE_VERIFY === '1' ? 'ENABLED' : 'disabled (POST /api/verify → 503)';
-  const moderation = process.env.ADMIN_KEY ? 'admin-only (ADMIN_KEY set)' : 'disabled (no ADMIN_KEY → 503)';
+  const moderation = (process.env.MODERATION_ENABLED === '1' && process.env.ADMIN_KEY) ? 'ENABLED (MODERATION_ENABLED=1 + ADMIN_KEY, header-only)' : 'disabled (needs MODERATION_ENABLED=1 + ADMIN_KEY → 503)';
   console.log(`  beta gates → payments: ${payments} · lease verification: ${lease} · moderation: ${moderation}`);
 });
 store.init()

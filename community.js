@@ -5,6 +5,19 @@
 // public store stays safe by construction.
 
 const store = require('./store');
+const crypto = require('crypto');
+
+// Constant-time moderator-key check. Both sides are SHA-256'd first so the
+// comparison is always over equal-length (32-byte) buffers and neither the
+// key's length nor its bytes leak through comparison timing.
+function keyMatches(supplied, secret) {
+  if (!supplied || !secret) return false;
+  try {
+    const a = crypto.createHash('sha256').update(String(supplied)).digest();
+    const b = crypto.createHash('sha256').update(String(secret)).digest();
+    return crypto.timingSafeEqual(a, b);
+  } catch (e) { return false; }
+}
 
 // ---- lightweight per-IP rate limiter (in-memory; fine for a single instance) ----
 const hits = new Map();
@@ -34,19 +47,9 @@ function photoList(arr, maxN = 8, maxLen = 900000) {
 }
 
 function mount(app) {
-  app.use((req, res, next) => { // JSON body (photos can be big)
-    // The app is same-origin (the page and the API share a host), so cross-origin
-    // headers are NOT needed by default. Only advertise CORS when an origin is
-    // explicitly configured — an UNSET CORS_ORIGIN means same-origin, never '*'.
-    const allow = process.env.CORS_ORIGIN;
-    if (allow) {
-      res.set('Access-Control-Allow-Origin', allow);
-      res.set('Access-Control-Allow-Headers', 'Content-Type');
-      res.set('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-    }
-    if (req.method === 'OPTIONS') return res.sendStatus(204);
-    next();
-  });
+  // CORS is handled once, globally, by the exact-allowlist middleware in
+  // server.js (a literal '*' is treated as disabled there). No per-router CORS
+  // header is set here, so nothing can widen the policy for the write endpoints.
 
   const guard = (req, res) => {
     const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'ip').split(',')[0];
@@ -152,12 +155,20 @@ function mount(app) {
   function proofOK(s, maxLen = 2200000) {
     return typeof s === 'string' && /^data:(image\/|application\/pdf)/.test(s) && s.length < maxLen;
   }
-  // Admin gate for the moderation endpoints. Key comes from env, compared to a
-  // header / query / body value. If unset, moderation is simply unavailable.
+  // Moderation requires BOTH an explicit opt-in flag AND an admin key:
+  //     MODERATION_ENABLED=1  AND  ADMIN_KEY present
+  // The key ALONE never activates moderation (so ADMIN_KEY can stay stored while
+  // moderation is off), and the flag ALONE never activates it. Default: OFF.
+  const MODERATION_ON = process.env.MODERATION_ENABLED === '1' && !!process.env.ADMIN_KEY;
+  // Admin gate for the moderation endpoints. The moderator key is accepted ONLY
+  // through the dedicated `X-Admin-Key` request header — never a URL query
+  // parameter, request body, or browser storage (those would leak the secret
+  // into logs, history, and referrers). The compare is constant-time and the
+  // supplied value is never logged.
   function admin(req, res) {
-    if (!process.env.ADMIN_KEY) { res.status(503).json({ error: 'Moderation is not configured yet.' }); return false; }
-    const k = String(req.headers['x-admin-key'] || (req.query && req.query.key) || (req.body && req.body.key) || '');
-    if (k !== process.env.ADMIN_KEY) { res.status(403).json({ error: 'Invalid moderator key.' }); return false; }
+    if (!MODERATION_ON) { res.status(503).json({ error: 'Moderation is not enabled.' }); return false; }
+    const supplied = req.headers['x-admin-key'];
+    if (!keyMatches(supplied, process.env.ADMIN_KEY)) { res.status(403).json({ error: 'Invalid moderator key.' }); return false; }
     return true;
   }
 

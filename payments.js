@@ -1,9 +1,14 @@
 // payments.js — Stripe Checkout for Radiator's access passes.
 //
-// Turns on automatically once STRIPE_SECRET_KEY is set in the environment.
-// Until then it's dormant and the frontend falls back to the demo unlock, so
-// the app never breaks. No webhooks and no product setup needed: prices are
-// defined inline here, and access is granted by verifying the completed
+// Payments are OFF by default and require BOTH an explicit opt-in flag AND a
+// Stripe secret to turn on:
+//     PAYMENTS_ENABLED=1   AND   STRIPE_SECRET_KEY present
+// A Stripe secret ALONE never enables checkout (so a secret can stay stored in
+// production while checkout stays dormant), and the flag ALONE never enables it
+// either. Only both together initialize the Stripe client and expose checkout;
+// with payments disabled Stripe is never require()'d/initialized, so NO Stripe
+// network request is ever made. No webhooks and no product setup needed: prices
+// are defined inline here, and access is granted by verifying the completed
 // Checkout Session when Stripe redirects the buyer back.
 
 const PLANS = {
@@ -15,10 +20,14 @@ const PLANS = {
 function origin(req) { return (req.headers['x-forwarded-proto'] || 'https') + '://' + (req.headers.host || ''); }
 
 function mount(app) {
+  // Both the opt-in flag AND a secret are required. Stripe is only require()'d
+  // when both are present, so nothing initializes (and no network call can
+  // happen) while payments are disabled — even if the secret is stored.
+  const enabled = process.env.PAYMENTS_ENABLED === '1';
   const key = process.env.STRIPE_SECRET_KEY;
-  const stripe = key ? require('stripe')(key) : null;
-  if (stripe) console.log('Stripe payments ENABLED.');
-  else console.log('Stripe payments dormant (set STRIPE_SECRET_KEY to enable).');
+  const stripe = (enabled && key) ? require('stripe')(key) : null;
+  if (stripe) console.log('Stripe payments ENABLED (PAYMENTS_ENABLED=1 + STRIPE_SECRET_KEY).');
+  else console.log('Stripe payments disabled (needs BOTH PAYMENTS_ENABLED=1 and STRIPE_SECRET_KEY; a secret alone does nothing).');
 
   // Frontend asks whether real checkout is available.
   app.get('/api/payments/status', (_req, res) => res.json({ enabled: !!stripe }));
