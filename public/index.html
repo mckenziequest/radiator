@@ -149,8 +149,16 @@ h1.page-t{font-size:1.65rem; font-weight:900; letter-spacing:-.02em; margin:2px 
 /* ---------- map ---------- */
 .maplayout{display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:18px; align-items:start}
 @media(max-width:1040px){.maplayout{grid-template-columns:1fr}}
-.mapbox{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); overflow:hidden; box-shadow:var(--shadow-sm)}
-.mapbox svg{display:block; width:100%; height:auto; background:linear-gradient(180deg,var(--surface-2),var(--surface))}
+.mapbox{position:relative; background:var(--surface); border:1px solid var(--line); border-radius:var(--r); overflow:hidden; box-shadow:var(--shadow-sm)}
+.mapbox svg{display:block; width:100%; height:auto; background:linear-gradient(180deg,var(--surface-2),var(--surface)); touch-action:pan-y; cursor:grab}
+.mapbox svg.grabbing{cursor:grabbing}
+.mapbox svg .bpin path,.mapbox svg .bdot{vector-effect:non-scaling-stroke}
+.mapctrls{position:absolute; top:10px; right:10px; display:flex; flex-direction:column; gap:6px; z-index:3}
+.mapctrls button{width:34px; height:34px; border-radius:9px; border:1px solid var(--line); background:var(--surface); color:var(--ink); font-size:19px; font-weight:700; cursor:pointer; box-shadow:var(--shadow-sm); display:grid; place-items:center; line-height:1; padding:0}
+.mapctrls button:hover:not(:disabled){border-color:var(--heat); color:var(--heat)}
+.mapctrls button:disabled{opacity:.4; cursor:default}
+.mapctrls .reset svg{width:17px; height:17px}
+.maphint-z{text-align:center; font-family:var(--mono); font-size:10.5px; color:var(--ink-faint); padding:0 12px 2px}
 .hoodpath{fill:color-mix(in srgb,var(--azure) 6%,var(--surface)); stroke:var(--line-strong); stroke-width:.6; stroke-linejoin:round; cursor:pointer}
 .hoodpath:hover{fill:color-mix(in srgb,var(--heat) 8%,var(--surface))}
 .hoodpath.sel{fill:color-mix(in srgb,var(--heat) 15%,var(--surface)); stroke:var(--heat); stroke-width:1.1}
@@ -1519,11 +1527,13 @@ function setRecency(r){reviewRecency=r;reviewRecencyFor=nav.id;render();}
 
 /* ============ MAP ============ */
 let mapHood='all',mapRisk='all';
+let _mapz=null; // zoom/pan controller set by drawMap()
+function mapZoom(k){if(_mapz&&_mapz[k])_mapz[k]();}
 function setMapFilter(k,v){if(k==='hood')mapHood=v;else if(k==='risk')mapRisk=v;render();}
 function viewMap(){
   return `<h1 class="page-t">Chicago risk map</h1><p class="page-sub">Every tracked building plotted on the city's real neighborhood boundaries, colored by open-violation risk. Filter to a neighborhood to drop pins; click any marker to open it.</p>
   <div class="maplayout">
-    <div><div class="mapbox"><div id="map-main"></div><div class="maplegend"><span><i style="background:var(--good)"></i>0–2 open</span><span><i style="background:var(--watch)"></i>3–9 open</span><span><i style="background:var(--risk)"></i>10+ open</span></div></div><div class="mapcap" id="mapcap"></div></div>
+    <div><div class="mapbox"><div class="mapctrls"><button type="button" aria-label="Zoom in" title="Zoom in" onclick="mapZoom('in')">+</button><button type="button" aria-label="Zoom out" title="Zoom out" onclick="mapZoom('out')">−</button><button type="button" class="reset" aria-label="Reset view" title="Reset view" onclick="mapZoom('reset')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button></div><div id="map-main"></div><div class="maphint-z">Scroll or pinch to zoom · drag to pan</div><div class="maplegend"><span><i style="background:var(--good)"></i>0–2 open</span><span><i style="background:var(--watch)"></i>3–9 open</span><span><i style="background:var(--risk)"></i>10+ open</span></div></div><div class="mapcap" id="mapcap"></div></div>
     <div class="map-side">
       <div class="selpill" style="width:100%"><label class="sr-only" for="map-hood">Filter map by neighborhood</label><select id="map-hood" onchange="setMapFilter('hood',this.value)"><option value="all">All neighborhoods</option>${HOODS.map(h=>`<option value="${esc(h)}"${mapHood===h?' selected':''}>${esc(h)}</option>`).join('')}</select></div>
       <div class="selpill" style="width:100%"><label class="sr-only" for="map-risk">Filter map by open-violation count</label><select id="map-risk" onchange="setMapFilter('risk',this.value)"><option value="all">Any record</option><option value="good"${mapRisk==='good'?' selected':''}>0–2 open</option><option value="watch"${mapRisk==='watch'?' selected':''}>3–9 open</option><option value="risk"${mapRisk==='risk'?' selected':''}>10+ open</option></select></div>
@@ -1543,14 +1553,61 @@ function drawMap(mountId){const mount=$('#'+mountId);if(!mount||!CHI.hoods||!CHI
   const paths=CHI.hoods.map(h=>{if(!h.ring||h.ring.length<3)return '';const sel=mapHood!=='all'&&h.name===mapHood;const d='M'+h.ring.map(p=>X(p[0]).toFixed(1)+','+Y(p[1]).toFixed(1)).join('L')+'Z';return `<path class="hoodpath${sel?' sel':''}" d="${d}" data-hood="${esc(h.name)}"/>`;}).join('');
   const asPins = list.length<=600;
   const marks=list.map(b=>{if(b.lat==null)return '';const r=riskOf(b);const cls=['g','w','r'][r];const x=X(b.lng).toFixed(1);const y=Y(b.lat).toFixed(1);
-    if(asPins){const k=(r===2?2.0:r===1?1.7:1.5).toFixed(2);return `<g class="bpin ${cls}" data-id="${b.id}" transform="translate(${x},${y}) scale(${k})"><path d="M0,0 C-6,-10 -6,-16 0,-16 C6,-16 6,-10 0,0 Z"/><circle cx="0" cy="-11" r="2.6" fill="#fff" pointer-events="none"/></g>`;}
+    if(asPins){const k=(r===2?2.0:r===1?1.7:1.5).toFixed(2);return `<g class="bpin ${cls}" data-id="${b.id}" data-x="${x}" data-y="${y}" data-k="${k}" transform="translate(${x},${y}) scale(${k})"><path d="M0,0 C-6,-10 -6,-16 0,-16 C6,-16 6,-10 0,0 Z"/><circle cx="0" cy="-11" r="2.6" fill="#fff" pointer-events="none"/></g>`;}
     const rad=r===2?4.2:r===1?3.2:2.6;return `<circle class="bdot ${cls}" cx="${x}" cy="${y}" r="${rad}" data-id="${b.id}"/>`;}).join('');
-  mount.innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" aria-label="Chicago building risk map">${paths}${marks}</svg>`;
+  mount.innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="application" tabindex="0" aria-label="Chicago building risk map — scroll or pinch to zoom, drag to pan, click a marker to open it">${paths}${marks}</svg>`;
   const cap=$('#mapcap'); if(cap) cap.textContent = sampled?`Showing a ${list.length.toLocaleString()}-building sample of ${totalDots.toLocaleString()} — pick a neighborhood to see every one.`:`${totalDots.toLocaleString()} building${totalDots===1?'':'s'} shown · source: City of Chicago`;
-  mount.querySelector('svg').addEventListener('click',e=>{const t=e.target;const pin=t&&t.closest?t.closest('.bpin'):null;
+
+  // ---- interactive zoom / pan (lightweight, no external library) ----
+  const svg=mount.querySelector('svg');
+  const MAXZ=10;
+  const view={x:0,y:0,w:W,h:H};
+  const pins=asPins?Array.from(svg.querySelectorAll('.bpin')):[];
+  const clamp=(v,a,b)=>v<a?a:(v>b?b:v);
+  let lastPinZ=1;
+  function updateBtns(z){const ctr=mount.parentElement&&mount.parentElement.querySelector('.mapctrls');if(!ctr)return;const bs=ctr.querySelectorAll('button');if(bs[0])bs[0].disabled=z>=MAXZ-0.01;if(bs[1])bs[1].disabled=z<=1.001;}
+  function applyZoom(){
+    view.w=clamp(view.w,W/MAXZ,W);view.h=view.w*(H/W);
+    view.x=clamp(view.x,0,Math.max(0,W-view.w));view.y=clamp(view.y,0,Math.max(0,H-view.h));
+    svg.setAttribute('viewBox',`${view.x.toFixed(1)} ${view.y.toFixed(1)} ${view.w.toFixed(1)} ${view.h.toFixed(1)}`);
+    const z=W/view.w;
+    if(pins.length && Math.abs(z-lastPinZ)>0.002){for(const g of pins){g.setAttribute('transform',`translate(${g.dataset.x},${g.dataset.y}) scale(${(+g.dataset.k/z).toFixed(3)})`);}lastPinZ=z;}
+    svg.style.touchAction=(view.w<W-0.5||view.h<H-0.5)?'none':'pan-y';
+    updateBtns(z);
+  }
+  function zoomAt(f,cx,cy){const nw=clamp(view.w/f,W/MAXZ,W);const nh=nw*(H/W);view.x=cx-(cx-view.x)*(nw/view.w);view.y=cy-(cy-view.y)*(nh/view.h);view.w=nw;view.h=nh;applyZoom();}
+  function toSvg(clientX,clientY){const rc=svg.getBoundingClientRect();return [view.x+((clientX-rc.left)/rc.width)*view.w, view.y+((clientY-rc.top)/rc.height)*view.h];}
+  _mapz={
+    in(){zoomAt(1.6,view.x+view.w/2,view.y+view.h/2);},
+    out(){zoomAt(1/1.6,view.x+view.w/2,view.y+view.h/2);},
+    reset(){view.x=0;view.y=0;view.w=W;view.h=H;applyZoom();}
+  };
+  svg.addEventListener('wheel',e=>{e.preventDefault();const [sx,sy]=toSvg(e.clientX,e.clientY);zoomAt(e.deltaY<0?1.16:1/1.16,sx,sy);},{passive:false});
+  const ptrs=new Map();let dragging=false,moved=false,lastX=0,lastY=0,pinch=0;
+  svg.addEventListener('pointerdown',e=>{ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});moved=false;
+    if(ptrs.size===1){dragging=true;lastX=e.clientX;lastY=e.clientY;}
+    else if(ptrs.size===2){dragging=false;const p=[...ptrs.values()];pinch=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);}
+    try{svg.setPointerCapture(e.pointerId);}catch(_){}});
+  svg.addEventListener('pointermove',e=>{if(!ptrs.has(e.pointerId))return;ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(ptrs.size>=2){const p=[...ptrs.values()];const d=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);if(pinch>0&&d>0){const [sx,sy]=toSvg((p[0].x+p[1].x)/2,(p[0].y+p[1].y)/2);zoomAt(d/pinch,sx,sy);}pinch=d;moved=true;return;}
+    if(dragging&&(view.w<W-0.5||view.h<H-0.5)){const dx=e.clientX-lastX,dy=e.clientY-lastY;if(Math.abs(dx)+Math.abs(dy)>2){moved=true;svg.classList.add('grabbing');}const rc=svg.getBoundingClientRect();view.x=clamp(view.x-dx*view.w/rc.width,0,Math.max(0,W-view.w));view.y=clamp(view.y-dy*view.h/rc.height,0,Math.max(0,H-view.h));lastX=e.clientX;lastY=e.clientY;applyZoom();}});
+  function endPtr(e){ptrs.delete(e.pointerId);if(ptrs.size<2)pinch=0;if(ptrs.size===0){dragging=false;svg.classList.remove('grabbing');}}
+  svg.addEventListener('pointerup',endPtr);svg.addEventListener('pointercancel',endPtr);
+  svg.addEventListener('click',e=>{if(moved){moved=false;return;}const t=e.target;const pin=t&&t.closest?t.closest('.bpin'):null;
     if(t&&t.classList.contains('bdot')){const id=t.getAttribute('data-id');if(id)go('building',id);}
     else if(pin){const id=pin.getAttribute('data-id');if(id)go('building',id);}
     else if(t&&t.classList.contains('hoodpath')){const h=t.getAttribute('data-hood');if(h){mapHood=h;render();}}});
+  svg.addEventListener('keydown',e=>{const step=view.w*0.15;let h=true;
+    if(e.key==='+'||e.key==='=')zoomAt(1.6,view.x+view.w/2,view.y+view.h/2);
+    else if(e.key==='-'||e.key==='_')zoomAt(1/1.6,view.x+view.w/2,view.y+view.h/2);
+    else if(e.key==='0'){view.x=0;view.y=0;view.w=W;view.h=H;applyZoom();}
+    else if(e.key==='ArrowLeft'){view.x=clamp(view.x-step,0,Math.max(0,W-view.w));applyZoom();}
+    else if(e.key==='ArrowRight'){view.x=clamp(view.x+step,0,Math.max(0,W-view.w));applyZoom();}
+    else if(e.key==='ArrowUp'){view.y=clamp(view.y-step,0,Math.max(0,H-view.h));applyZoom();}
+    else if(e.key==='ArrowDown'){view.y=clamp(view.y+step,0,Math.max(0,H-view.h));applyZoom();}
+    else h=false;
+    if(h)e.preventDefault();});
+  applyZoom();
 }
 
 /* ============ BUILDING ============ */
