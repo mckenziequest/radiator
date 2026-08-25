@@ -914,6 +914,10 @@ async function comPush(kind,payload){const base=comBase();
     if(timer)clearTimeout(timer);
     let data=null; try{data=await res.json();}catch(e){data=null;}
     if(!res.ok)return {ok:false,status:res.status,error:(data&&data.error)||('Request failed ('+res.status+').')};
+    // A 2xx with no parseable body, or an explicit {ok:false}, is NOT success —
+    // every real success returns {ok:true,...}. Never claim "saved" on these.
+    if(data===null)return {ok:false,error:'Unexpected server response — please try again.'};
+    if(data.ok===false)return {ok:false,error:data.error||'The server could not save it — please try again.'};
     return {ok:true,data};
   }catch(e){
     if(timer)clearTimeout(timer);
@@ -1028,8 +1032,11 @@ function portfolioOf(b){if(b.demo){const s=DEMO.filter(x=>x.co===b.co);return{ke
 function mgrKey(b){return 'pg'+((b&&b.pg)||'');}
 function managerNameOf(b){if(!b)return null;if(b.demo)return b.co||null;const k=mgrKey(b);return (S.names&&S.names[k])||(COM.names&&COM.names[k])||null;}
 function nameManager(bid){const b=bById(bid);if(!b||b.demo||!b.pg)return;const k=mgrKey(b);const cur=(S.names&&S.names[k])||'';const v=prompt('Who manages these buildings? Name the property-management company (e.g. "Pangea", "Planned Property Management") so renters can look them up:',cur);if(v===null)return;if(!S.names)S.names={};const t=v.trim();if(!t){delete S.names[k];persist();render();toast('Name removed');return;}
-  S.names[k]=t;persist();render();
-  comPush('names',{b:k,name:t,by:(S.handle||'A neighbor')}).then(res=>{if(!res.ok){delete S.names[k];persist();render();toast(res.error||'Could not save the name. Try again.');}else toast('Company named — now searchable.');});}
+  if(_busy['name-'+k]){toast('Saving…');return;} _busy['name-'+k]=true;
+  // Confirm-first: only record the name locally AFTER the server confirms it saved.
+  comPush('names',{b:k,name:t,by:(S.handle||'A neighbor')}).then(res=>{_busy['name-'+k]=false;
+    if(!res.ok){toast(res.error||'Could not save the name. Try again.');return;}
+    if(!S.names)S.names={};S.names[k]=t;persist();render();toast('Company named — now searchable.');});}
 /* ===== "Around the web" deep links (no API needed — opens each site's live search) ===== */
 function webLinks(name,isCompany){const chi=' Chicago';const enc=s=>encodeURIComponent(s);
   return {
@@ -1701,7 +1708,12 @@ function replyToReview(rid,bid){
     if(!res.ok){toast(res.error||'Could not post the response. Try again.');return;}
     if(!S.replies)S.replies=[];S.replies.unshift(rp);persist();render();toast('Response posted.');});
 }
-function reportReview(id){toast('Thanks — flagged for moderator review.');}
+function reportReview(id){
+  if(_busy['rep-rv-'+id]){toast('Sending your report…');return;}
+  _busy['rep-rv-'+id]=true;
+  comPush('reports',{kind:'review',ref:id,reason:'flagged by a reader'}).then(res=>{_busy['rep-rv-'+id]=false;
+    if(res.ok)toast('Thanks — flagged for moderator review.');
+    else toast(res.error||'Could not send the report — please try again.');});}
 function issueHTML(i){const dn=daysOpen(i.date);const tier=daysTier(dn);const resolved=i.status==='resolved';const mine=i.mine||(i.by&&i.by===S.handle);
   return `<div class="issue ${resolved?'resolved':''}"><div class="issue-top"><span class="issue-cat">${catE(i.cat)} ${esc(i.cat)}</span>${resolved?`<span class="resolved-tag">Resolved</span>`:`<span class="daysbadge d${tier}">🔥 ${dn} day${dn===1?'':'s'} open</span>`}</div>
     <div class="issue-title">${esc(i.title)}</div>${i.desc?`<div class="issue-desc">${esc(i.desc)}</div>`:''}
@@ -1709,8 +1721,13 @@ function issueHTML(i){const dn=daysOpen(i.date);const tier=daysTier(dn);const re
     <div class="issue-meta">Reported ${fmtFull(i.date)}${resolved&&i.resolvedDate?' · resolved '+fmtFull(i.resolvedDate):''} · ${esc(i.by||'Anonymous')}</div>
     ${(!resolved&&mine)?`<div class="issue-act"><button class="btn outline sm" style="width:auto;display:inline-flex" onclick="resolveIssue('${i.id}')">Mark resolved</button></div>`:''}</div>`;
 }
-function resolveIssue(id){const i=(S.issues||[]).find(x=>x.id===id);if(!i)return;i.status='resolved';i.resolvedDate=todayISO();persist();render();
-  comPush('issues',i).then(res=>{if(!res.ok){i.status='open';i.resolvedDate=null;persist();render();toast(res.error||'Could not save — try again.');}else toast('Marked resolved.');});}
+function resolveIssue(id){const i=(S.issues||[]).find(x=>x.id===id);if(!i)return;
+  if(_busy['resolve-'+id])return; _busy['resolve-'+id]=true;
+  // Confirm-first: don't flip the issue to resolved until the server confirms.
+  const resolvedDate=todayISO();
+  comPush('issues',Object.assign({},i,{status:'resolved',resolvedDate})).then(res=>{_busy['resolve-'+id]=false;
+    if(!res.ok){toast(res.error||'Could not save — try again.');return;}
+    i.status='resolved';i.resolvedDate=resolvedDate;persist();render();toast('Marked resolved.');});}
 function addBuildingPhotos(bid){const inp=document.createElement('input');inp.type='file';inp.accept='image/*';inp.multiple=true;inp.onchange=()=>{
   const files=[...inp.files].slice(0,8).filter(f=>f.type.startsWith('image/'));
   if(!files.length){toast('No image selected');return;}
@@ -1819,8 +1836,13 @@ function answerQuestion(qid){const el=$('#qa-r-'+qid);const t=(el.value||'').tri
   comPush('qa',{id:q.id,b:q.b,q:q.text,a:q.replies.concat([reply]).map(r=>r.text).join(' • '),by:q.author}).then(res=>{_busy['ans-'+qid]=false;
     if(!res.ok){toast(res.error||'Could not post your answer. Try again.');return;}
     q.replies.push(reply);persist();render();toast('Answer posted.');});}
-function toggleHelpful(id){const was=!!S.helpful[id];S.helpful[id]=!was;if(!S.helpful[id])delete S.helpful[id];persist();render();
-  if(!was){comPush('helpful',{id}).then(res=>{if(!res.ok){delete S.helpful[id];persist();render();toast(res.error||'Could not save your vote.');}});}}
+function toggleHelpful(id){const was=!!S.helpful[id];
+  if(was){delete S.helpful[id];persist();render();return;} // un-vote is local only (no decrement endpoint)
+  if(_busy['help-'+id])return; _busy['help-'+id]=true;
+  // Confirm-first: only record the helpful vote after the server confirms it.
+  comPush('helpful',{id}).then(res=>{_busy['help-'+id]=false;
+    if(!res.ok){toast(res.error||'Could not save your vote.');return;}
+    S.helpful[id]=true;persist();render();});}
 function toggleSave(bid){const i=S.saved.indexOf(bid);if(i>=0){S.saved.splice(i,1);toast('Removed from watchlist');}else{S.saved.push(bid);toast('Added to watchlist');}persist();render();}
 function toggleCompare(bid){const i=S.compare.indexOf(bid);if(i>=0){S.compare.splice(i,1);toast('Removed from compare');}else{if(S.compare.length>=6){toast('Compare up to 6 at once');return;}S.compare.push(bid);toast('Added to compare');}persist();render();}
 
