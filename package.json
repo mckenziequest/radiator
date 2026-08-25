@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "MOCK=1 node server.js",
-    "test": "node test.js"
+    "test": "node test.js",
+    "release-check": "node tests/release-check.mjs"
   },
   "dependencies": {
     "compression": "^1.8.1",

@@ -39,7 +39,9 @@ services:
         sync: false
       - key: REDDIT_CLIENT_SECRET
         sync: false
-      - key: CORS_ORIGIN
-        value: "*"
+      # CORS is same-origin by default (page + API share a host), so no origin
+      # is provisioned here. Do NOT set CORS_ORIGIN to "*" — the server treats a
+      # literal "*" as disabled. To allow a specific cross-origin caller, set
+      # CORS_ORIGIN to an exact comma-separated origin allowlist in the dashboard.
       - key: CACHE_HOURS
         value: "12"

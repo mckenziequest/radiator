@@ -1,0 +1,128 @@
+{
+  "source": "radiator3.html",
+  "firms": [
+    {
+      "id": "33-realty",
+      "name": "33 Realty",
+      "kind": "Property management"
+    },
+    {
+      "id": "chicago-apartment-finders",
+      "name": "Chicago Apartment Finders",
+      "kind": "Leasing & brokerage"
+    },
+    {
+      "id": "domus-group",
+      "name": "Domus Group",
+      "kind": "Property management"
+    },
+    {
+      "id": "downtown-apartment-co",
+      "name": "Downtown Apartment Company",
+      "kind": "Leasing & brokerage"
+    },
+    {
+      "id": "draper-and-kramer",
+      "name": "Draper and Kramer",
+      "kind": "Property management"
+    },
+    {
+      "id": "flats-chicago",
+      "name": "Flats (Cedar Street)",
+      "kind": "Property management"
+    },
+    {
+      "id": "fulton-grace",
+      "name": "Fulton Grace Realty",
+      "kind": "Property management & brokerage"
+    },
+    {
+      "id": "group-fox",
+      "name": "Group Fox",
+      "kind": "Property management"
+    },
+    {
+      "id": "group-invictus",
+      "name": "Invictus Real Estate",
+      "kind": "Property management"
+    },
+    {
+      "id": "kass-management",
+      "name": "Kass Management Services",
+      "kind": "Property management"
+    },
+    {
+      "id": "lincoln-property",
+      "name": "Lincoln Property Company",
+      "kind": "Property management"
+    },
+    {
+      "id": "mac-properties",
+      "name": "MAC Properties",
+      "kind": "Property management"
+    },
+    {
+      "id": "marquette-management",
+      "name": "Marquette Management",
+      "kind": "Property management"
+    },
+    {
+      "id": "pangea",
+      "name": "Pangea Real Estate",
+      "kind": "Property management"
+    },
+    {
+      "id": "peak-properties",
+      "name": "Peak Properties",
+      "kind": "Property management"
+    },
+    {
+      "id": "planned-property",
+      "name": "Planned Property Management",
+      "kind": "Property management"
+    },
+    {
+      "id": "reside-living",
+      "name": "Reside Living",
+      "kind": "Property management"
+    },
+    {
+      "id": "silver-property",
+      "name": "Silver Property Group",
+      "kind": "Property management"
+    },
+    {
+      "id": "the-habitat-company",
+      "name": "The Habitat Company",
+      "kind": "Property management"
+    },
+    {
+      "id": "tlc-management",
+      "name": "TLC Management",
+      "kind": "Property management"
+    },
+    {
+      "id": "waterton",
+      "name": "Waterton",
+      "kind": "Property management"
+    },
+    {
+      "id": "wirtz-realty",
+      "name": "Wirtz Realty",
+      "kind": "Property management"
+    }
+  ],
+  "buildingNames": {
+    "1130 N DEARBORN St": "Elm Street Plaza",
+    "123 S GREEN St": "Catalyst",
+    "175 N HARBOR Dr": "North Harbor Tower",
+    "220 E ILLINOIS St": "Optima Signature",
+    "222 N COLUMBUS Dr": "Park Millennium",
+    "2340 N CALIFORNIA Ave": "NoCa Blu",
+    "333 E ONTARIO St": "McClurg Court",
+    "350 N CANAL St": "Cassidy on Canal",
+    "360 E SOUTH WATER St": "The Tides",
+    "451 E GRAND Ave": "One Bennett Park",
+    "555 W MADISON St": "Presidential Towers"
+  }
+}

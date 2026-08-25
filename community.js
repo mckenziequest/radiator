@@ -5,6 +5,19 @@
 // public store stays safe by construction.
 
 const store = require('./store');
+const crypto = require('crypto');
+
+// Constant-time moderator-key check. Both sides are SHA-256'd first so the
+// comparison is always over equal-length (32-byte) buffers and neither the
+// key's length nor its bytes leak through comparison timing.
+function keyMatches(supplied, secret) {
+  if (!supplied || !secret) return false;
+  try {
+    const a = crypto.createHash('sha256').update(String(supplied)).digest();
+    const b = crypto.createHash('sha256').update(String(secret)).digest();
+    return crypto.timingSafeEqual(a, b);
+  } catch (e) { return false; }
+}
 
 // ---- lightweight per-IP rate limiter (in-memory; fine for a single instance) ----
 const hits = new Map();
@@ -34,19 +47,22 @@ function photoList(arr, maxN = 8, maxLen = 900000) {
 }
 
 function mount(app) {
-  app.use((req, res, next) => { // JSON body (photos can be big)
-    res.set('Access-Control-Allow-Origin', process.env.CORS_ORIGIN || '*');
-    res.set('Access-Control-Allow-Headers', 'Content-Type');
-    res.set('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-    if (req.method === 'OPTIONS') return res.sendStatus(204);
-    next();
-  });
+  // CORS is handled once, globally, by the exact-allowlist middleware in
+  // server.js (a literal '*' is treated as disabled there). No per-router CORS
+  // header is set here, so nothing can widen the policy for the write endpoints.
 
   const guard = (req, res) => {
     const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'ip').split(',')[0];
     if (rateLimited(ip)) { res.status(429).json({ error: 'Slow down a moment and try again.' }); return true; }
     return false;
   };
+
+  // Lease / tenancy-proof verification is OFF during the free beta. It collects a
+  // sensitive document (a lease image/PDF), so it is disabled SERVER-SIDE — the
+  // client hiding the field is not enough, since /api/verify could otherwise be
+  // POSTed directly. It only turns on with an explicit server env flag; no
+  // client-side flag, query param, or browser state can enable it.
+  const LEASE_VERIFY_ON = process.env.LEASE_VERIFY === '1';
 
   // Pull all shared content (optionally only what changed since ?since=<ms>)
   app.get('/api/community', async (req, res) => {
@@ -139,17 +155,26 @@ function mount(app) {
   function proofOK(s, maxLen = 2200000) {
     return typeof s === 'string' && /^data:(image\/|application\/pdf)/.test(s) && s.length < maxLen;
   }
-  // Admin gate for the moderation endpoints. Key comes from env, compared to a
-  // header / query / body value. If unset, moderation is simply unavailable.
+  // Moderation requires BOTH an explicit opt-in flag AND an admin key:
+  //     MODERATION_ENABLED=1  AND  ADMIN_KEY present
+  // The key ALONE never activates moderation (so ADMIN_KEY can stay stored while
+  // moderation is off), and the flag ALONE never activates it. Default: OFF.
+  const MODERATION_ON = process.env.MODERATION_ENABLED === '1' && !!process.env.ADMIN_KEY;
+  // Admin gate for the moderation endpoints. The moderator key is accepted ONLY
+  // through the dedicated `X-Admin-Key` request header — never a URL query
+  // parameter, request body, or browser storage (those would leak the secret
+  // into logs, history, and referrers). The compare is constant-time and the
+  // supplied value is never logged.
   function admin(req, res) {
-    if (!process.env.ADMIN_KEY) { res.status(503).json({ error: 'Moderation is not configured yet.' }); return false; }
-    const k = String(req.headers['x-admin-key'] || (req.query && req.query.key) || (req.body && req.body.key) || '');
-    if (k !== process.env.ADMIN_KEY) { res.status(403).json({ error: 'Invalid moderator key.' }); return false; }
+    if (!MODERATION_ON) { res.status(503).json({ error: 'Moderation is not enabled.' }); return false; }
+    const supplied = req.headers['x-admin-key'];
+    if (!keyMatches(supplied, process.env.ADMIN_KEY)) { res.status(403).json({ error: 'Invalid moderator key.' }); return false; }
     return true;
   }
 
   // Tenant submits a redacted lease to request a ✓ Verified badge on their review.
   app.post('/api/verify', async (req, res) => {
+    if (!LEASE_VERIFY_ON) return res.status(503).json({ error: 'Lease verification is paused during the free beta.' });
     if (guard(req, res)) return;
     const b = req.body || {};
     if (!id(b.rid) || !bid(b.b) || !proofOK(b.proof)) {
