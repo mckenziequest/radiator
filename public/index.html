@@ -159,6 +159,21 @@ h1.page-t{font-size:1.65rem; font-weight:900; letter-spacing:-.02em; margin:2px 
 .mapctrls button:disabled{opacity:.4; cursor:default}
 .mapctrls .reset svg{width:17px; height:17px}
 .maphint-z{text-align:center; font-family:var(--mono); font-size:10.5px; color:var(--ink-faint); padding:0 12px 2px}
+.cluster{cursor:pointer}
+.cluster circle{stroke:#fff; stroke-width:1.5; paint-order:stroke; vector-effect:non-scaling-stroke; filter:drop-shadow(0 1px 1.5px rgba(60,30,15,.25))}
+.cluster.g circle{fill:var(--good)} .cluster.w circle{fill:var(--watch)} .cluster.r circle{fill:var(--risk)}
+.cluster text{fill:#fff; font-family:var(--mono); font-weight:700; text-anchor:middle; dominant-baseline:central; pointer-events:none}
+.cluster:hover circle{filter:drop-shadow(0 2px 3px rgba(60,30,15,.4)) brightness(1.04)}
+.mappop{position:absolute; z-index:5; width:232px; max-width:80%; background:var(--surface); border:1px solid var(--line); border-radius:12px; box-shadow:var(--shadow); padding:12px 12px 11px; transform:translate(-50%,calc(-100% - 15px)); font-family:var(--sans)}
+.mappop::after{content:""; position:absolute; left:50%; bottom:-6px; width:11px; height:11px; background:var(--surface); border-right:1px solid var(--line); border-bottom:1px solid var(--line); transform:translateX(-50%) rotate(45deg)}
+.mappop .mp-x{position:absolute; top:6px; right:7px; border:none; background:none; font-size:15px; line-height:1; color:var(--ink-faint); cursor:pointer; padding:3px}
+.mappop .mp-x:hover{color:var(--ink)}
+.mappop .mp-name{font-weight:700; font-size:14px; color:var(--ink); line-height:1.25; padding-right:14px; margin-bottom:2px}
+.mappop .mp-addr{font-size:12px; color:var(--ink-soft); margin-bottom:9px}
+.mappop .mp-row{display:flex; align-items:center; gap:9px; flex-wrap:wrap; margin-bottom:11px}
+.mappop .mp-rating{font-size:12px; color:var(--ink-soft); display:inline-flex; align-items:center; gap:5px}
+.mappop .mp-btn{display:block; width:100%; text-align:center; background:var(--heat); color:#fff; border:none; border-radius:9px; padding:8px 10px; font-weight:700; font-size:13px; cursor:pointer}
+.mappop .mp-btn:hover{background:var(--heat-deep)}
 .hoodpath{fill:color-mix(in srgb,var(--azure) 6%,var(--surface)); stroke:var(--line-strong); stroke-width:.6; stroke-linejoin:round; cursor:pointer}
 .hoodpath:hover{fill:color-mix(in srgb,var(--heat) 8%,var(--surface))}
 .hoodpath.sel{fill:color-mix(in srgb,var(--heat) 15%,var(--surface)); stroke:var(--heat); stroke-width:1.1}
@@ -1532,17 +1547,19 @@ let mapViewState=null; // persists zoom/pan across re-renders (e.g. background c
 function mapZoom(k){if(_mapz&&_mapz[k])_mapz[k]();}
 function setMapFilter(k,v){if(k==='hood')mapHood=v;else if(k==='risk')mapRisk=v;render();}
 function viewMap(){
-  return `<h1 class="page-t">Chicago risk map</h1><p class="page-sub">Every tracked building plotted on the city's real neighborhood boundaries, colored by open-violation risk. Filter to a neighborhood to drop pins; click any marker to open it.</p>
+  return `<h1 class="page-t">Chicago risk map</h1><p class="page-sub">Every tracked building plotted on the city's real neighborhood boundaries, colored by open-violation risk. Nearby buildings group into numbered clusters — zoom in or click a cluster to break it apart, then click a building for a quick preview.</p>
   <div class="maplayout">
-    <div><div class="mapbox"><div class="mapctrls"><button type="button" aria-label="Zoom in" title="Zoom in" onclick="mapZoom('in')">+</button><button type="button" aria-label="Zoom out" title="Zoom out" onclick="mapZoom('out')">−</button><button type="button" class="reset" aria-label="Reset view" title="Reset view" onclick="mapZoom('reset')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button></div><div id="map-main"></div><div class="maphint-z">Scroll or pinch to zoom · drag to pan</div><div class="maplegend"><span><i style="background:var(--good)"></i>0–2 open</span><span><i style="background:var(--watch)"></i>3–9 open</span><span><i style="background:var(--risk)"></i>10+ open</span></div></div><div class="mapcap" id="mapcap"></div></div>
+    <div><div class="mapbox"><div class="mapctrls"><button type="button" aria-label="Zoom in" title="Zoom in" onclick="mapZoom('in')">+</button><button type="button" aria-label="Zoom out" title="Zoom out" onclick="mapZoom('out')">−</button><button type="button" class="reset" aria-label="Reset view" title="Reset view" onclick="mapZoom('reset')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button></div><div id="map-main"></div><div class="maphint-z">Scroll or pinch to zoom · drag to pan · click a cluster to expand</div><div class="maplegend"><span><i style="background:var(--good)"></i>0–2 open</span><span><i style="background:var(--watch)"></i>3–9 open</span><span><i style="background:var(--risk)"></i>10+ open</span></div></div><div class="mapcap" id="mapcap"></div></div>
     <div class="map-side">
       <div class="selpill" style="width:100%"><label class="sr-only" for="map-hood">Filter map by neighborhood</label><select id="map-hood" onchange="setMapFilter('hood',this.value)"><option value="all">All neighborhoods</option>${HOODS.map(h=>`<option value="${esc(h)}"${mapHood===h?' selected':''}>${esc(h)}</option>`).join('')}</select></div>
       <div class="selpill" style="width:100%"><label class="sr-only" for="map-risk">Filter map by open-violation count</label><select id="map-risk" onchange="setMapFilter('risk',this.value)"><option value="all">Any record</option><option value="good"${mapRisk==='good'?' selected':''}>0–2 open</option><option value="watch"${mapRisk==='watch'?' selected':''}>3–9 open</option><option value="risk"${mapRisk==='risk'?' selected':''}>10+ open</option></select></div>
-      <div class="hint">Dots are sized and colored by how many open building-code violations each address has on file with the City of Chicago. Bigger red dots = more open violations. Dot colors use our stored City of Chicago snapshot (a periodic build-time count) — open any building to pull its current, live record. ${isDemo()?'<b>Switch to Live mode in Profile to see the real map.</b>':''}</div>
+      <div class="hint">Buildings are colored by how many open building-code violations each address has on file with the City of Chicago (red = more). Nearby buildings group into numbered clusters; zoom in or click a cluster to break it apart, and click any building for a quick preview. Counts use our stored City of Chicago snapshot (a periodic build-time count) — open a building to pull its current, live record. ${isDemo()?'<b>Switch to Live mode in Profile to see the real map.</b>':''}</div>
     </div>
   </div>`;
 }
 function drawMap(mountId){const mount=$('#'+mountId);if(!mount||!CHI.hoods||!CHI.bbox){if(mount)mount.innerHTML='<div class="empty" style="padding:30px">Map unavailable</div>';return;}
+  const box=mount.parentElement; // .mapbox (position:relative) — hosts the preview popup
+  if(box)box.querySelectorAll('.mappop').forEach(e=>e.remove()); // clear any stale popup from a prior render
   const bb=CHI.bbox;const latMid=(bb.minLat+bb.maxLat)/2;const kx=Math.cos(latMid*Math.PI/180);
   const W=1000;const lngSpan=(bb.maxLng-bb.minLng)*kx;const latSpan=(bb.maxLat-bb.minLat);const H=Math.round(W*(latSpan/lngSpan));
   const X=lng=>((lng-bb.minLng)*kx)/lngSpan*W;const Y=lat=>(bb.maxLat-lat)/latSpan*H;
@@ -1551,42 +1568,71 @@ function drawMap(mountId){const mount=$('#'+mountId);if(!mount||!CHI.hoods||!CHI
   if(mapRisk!=='all')list=list.filter(b=>RISK_CLASS[riskOf(b)]===mapRisk);
   const totalDots=list.length; let sampled=false;
   if(list.length>MAP_CAP){const step=Math.ceil(list.length/MAP_CAP);list=list.filter((_,i)=>i%step===0);sampled=true;}
+  // project each building to SVG coords once
+  const pts=[]; for(const b of list){if(b.lat==null)continue;pts.push({x:X(b.lng),y:Y(b.lat),r:riskOf(b),id:b.id});}
   const paths=CHI.hoods.map(h=>{if(!h.ring||h.ring.length<3)return '';const sel=mapHood!=='all'&&h.name===mapHood;const d='M'+h.ring.map(p=>X(p[0]).toFixed(1)+','+Y(p[1]).toFixed(1)).join('L')+'Z';return `<path class="hoodpath${sel?' sel':''}" d="${d}" data-hood="${esc(h.name)}"/>`;}).join('');
-  const asPins = list.length<=600;
-  const marks=list.map(b=>{if(b.lat==null)return '';const r=riskOf(b);const cls=['g','w','r'][r];const x=X(b.lng).toFixed(1);const y=Y(b.lat).toFixed(1);
-    if(asPins){const k=(r===2?2.0:r===1?1.7:1.5).toFixed(2);return `<g class="bpin ${cls}" data-id="${b.id}" data-x="${x}" data-y="${y}" data-k="${k}" transform="translate(${x},${y}) scale(${k})"><path d="M0,0 C-6,-10 -6,-16 0,-16 C6,-16 6,-10 0,0 Z"/><circle cx="0" cy="-11" r="2.6" fill="#fff" pointer-events="none"/></g>`;}
-    const rad=r===2?4.2:r===1?3.2:2.6;return `<circle class="bdot ${cls}" cx="${x}" cy="${y}" r="${rad}" data-id="${b.id}"/>`;}).join('');
-  mount.innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="application" tabindex="0" aria-label="Chicago building risk map — scroll or pinch to zoom, drag to pan, click a marker to open it">${paths}${marks}</svg>`;
+  mount.innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="application" tabindex="0" aria-label="Chicago building risk map — scroll or pinch to zoom, drag to pan, click a cluster to expand, click a building for a preview"><g class="hoods">${paths}</g><g class="marks"></g></svg>`;
   const cap=$('#mapcap'); if(cap) cap.textContent = sampled?`Showing a ${list.length.toLocaleString()}-building sample of ${totalDots.toLocaleString()} — pick a neighborhood to see every one.`:`${totalDots.toLocaleString()} building${totalDots===1?'':'s'} shown · source: City of Chicago`;
 
-  // ---- interactive zoom / pan (lightweight, no external library) ----
-  const svg=mount.querySelector('svg');
-  const MAXZ=10;
+  // ---- interactive zoom / pan + clustering + preview (lightweight, no external library) ----
+  const svg=mount.querySelector('svg'); const marksG=svg.querySelector('.marks');
+  const MAXZ=12;
   // Restore the prior zoom/pan when this is a re-render of the SAME filtered view
-  // (a background community refresh calls render()); reset to full extent when the
-  // neighborhood/risk filter changed.
+  // (a background community refresh calls render()); reset to full extent when the filter changed.
   const keep=mapViewState&&mapViewState.hood===mapHood&&mapViewState.risk===mapRisk;
   const view=keep?{x:mapViewState.x,y:mapViewState.y,w:mapViewState.w,h:mapViewState.h}:{x:0,y:0,w:W,h:H};
-  const pins=asPins?Array.from(svg.querySelectorAll('.bpin')):[];
   const clamp=(v,a,b)=>v<a?a:(v>b?b:v);
-  let lastPinZ=1;
-  function updateBtns(z){const ctr=mount.parentElement&&mount.parentElement.querySelector('.mapctrls');if(!ctr)return;const bs=ctr.querySelectorAll('button');if(bs[0])bs[0].disabled=z>=MAXZ-0.01;if(bs[1])bs[1].disabled=z<=1.001;}
-  function applyZoom(){
+  const RC=['g','w','r'];
+  let popEl=null, popPt=null, lastClusterZ=-1;
+  function updateBtns(z){const ctr=box&&box.querySelector('.mapctrls');if(!ctr)return;const bs=ctr.querySelectorAll('button');if(bs[0])bs[0].disabled=z>=MAXZ-0.01;if(bs[1])bs[1].disabled=z<=1.001;}
+  function svgPerPx(){const rc=svg.getBoundingClientRect();return rc.width?view.w/rc.width:view.w/600;}
+  function screenOf(sx,sy){const rc=svg.getBoundingClientRect();return [rc.left+(sx-view.x)/view.w*rc.width, rc.top+(sy-view.y)/view.h*rc.height];}
+  // grid clustering at the current zoom: nearby points collapse into one numbered bubble
+  function redrawMarks(){
+    const u=svgPerPx(); const cell=54*u; const cells=new Map();
+    for(const p of pts){const gx=Math.floor(p.x/cell),gy=Math.floor(p.y/cell);const k=gx+'_'+gy;let c=cells.get(k);
+      if(!c){c={sx:0,sy:0,n:0,r:0,minx:1e9,miny:1e9,maxx:-1e9,maxy:-1e9,one:null};cells.set(k,c);}
+      c.sx+=p.x;c.sy+=p.y;c.n++;if(p.r>c.r)c.r=p.r;if(p.x<c.minx)c.minx=p.x;if(p.x>c.maxx)c.maxx=p.x;if(p.y<c.miny)c.miny=p.y;if(p.y>c.maxy)c.maxy=p.y;c.one=p;}
+    let html='';
+    for(const c of cells.values()){
+      if(c.n===1){const p=c.one;const rad=((p.r===2?6:p.r===1?5:4)*u).toFixed(2);html+=`<circle class="bdot ${RC[p.r]}" cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${rad}" data-id="${p.id}"/>`;}
+      else{const cx=(c.sx/c.n),cy=(c.sy/c.n);const R=((13+Math.min(15,Math.sqrt(c.n)*2.2))*u).toFixed(2);const fs=(((''+c.n).length>=4?9.5:11)*u).toFixed(2);const label=c.n>999?(Math.round(c.n/100)/10)+'k':c.n;
+        html+=`<g class="cluster ${RC[c.r]}" data-minx="${c.minx.toFixed(1)}" data-miny="${c.miny.toFixed(1)}" data-maxx="${c.maxx.toFixed(1)}" data-maxy="${c.maxy.toFixed(1)}"><circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${R}"/><text x="${cx.toFixed(1)}" y="${cy.toFixed(1)}" font-size="${fs}">${label}</text></g>`;}
+    }
+    marksG.innerHTML=html;
+  }
+  function setViewBox(){
     view.w=clamp(view.w,W/MAXZ,W);view.h=view.w*(H/W);
     view.x=clamp(view.x,0,Math.max(0,W-view.w));view.y=clamp(view.y,0,Math.max(0,H-view.h));
     svg.setAttribute('viewBox',`${view.x.toFixed(1)} ${view.y.toFixed(1)} ${view.w.toFixed(1)} ${view.h.toFixed(1)}`);
-    const z=W/view.w;
-    if(pins.length && Math.abs(z-lastPinZ)>0.002){for(const g of pins){g.setAttribute('transform',`translate(${g.dataset.x},${g.dataset.y}) scale(${(+g.dataset.k/z).toFixed(3)})`);}lastPinZ=z;}
     svg.style.touchAction=(view.w<W-0.5||view.h<H-0.5)?'none':'pan-y';
-    mapViewState={hood:mapHood,risk:mapRisk,x:view.x,y:view.y,w:view.w,h:view.h}; // remember across re-renders
-    updateBtns(z);
+    mapViewState={hood:mapHood,risk:mapRisk,x:view.x,y:view.y,w:view.w,h:view.h};
+    updateBtns(W/view.w);
   }
+  function applyZoom(){const before=lastClusterZ;setViewBox();const z=W/view.w;if(Math.abs(z-before)>0.001){closePop();redrawMarks();lastClusterZ=z;}repositionPop();}
+  function applyPan(){setViewBox();repositionPop();}
   function zoomAt(f,cx,cy){const nw=clamp(view.w/f,W/MAXZ,W);const nh=nw*(H/W);view.x=cx-(cx-view.x)*(nw/view.w);view.y=cy-(cy-view.y)*(nh/view.h);view.w=nw;view.h=nh;applyZoom();}
+  function fitTo(minx,miny,maxx,maxy){const u=svgPerPx();let w=Math.max((maxx-minx)+80*u,((maxy-miny)+80*u)*(W/H));w=Math.min(w,view.w*0.55);w=clamp(w,W/MAXZ,W);const cx=(minx+maxx)/2,cy=(miny+maxy)/2;view.w=w;view.h=w*(H/W);view.x=cx-view.w/2;view.y=cy-view.h/2;applyZoom();}
   function toSvg(clientX,clientY){const rc=svg.getBoundingClientRect();return [view.x+((clientX-rc.left)/rc.width)*view.w, view.y+((clientY-rc.top)/rc.height)*view.h];}
+  // ---- preview popup ----
+  function closePop(){if(popEl){popEl.remove();popEl=null;popPt=null;}}
+  function repositionPop(){if(!popEl||!popPt||!box)return;const [sx,sy]=screenOf(popPt.x,popPt.y);const br=box.getBoundingClientRect();const lx=sx-br.left,ly=sy-br.top;
+    if(lx<-4||lx>br.width+4||ly<-4||ly>br.height+4){popEl.style.display='none';return;}popEl.style.display='';popEl.style.left=lx+'px';popEl.style.top=ly+'px';}
+  function showPop(id,px,py){closePop();const b=bById(id);if(!b||!box)return;popPt={x:px,y:py};const rt=ratingOf(id);const nm=b.name||b.addr;
+    const openLine=(!b.demo&&b.open!=null)?`<span style="font-size:11px;color:var(--ink-faint)">${b.open} open</span>`:'';
+    const rating=rt.n?`<span class="mp-rating">${starsHTML(rt.avg)} ${rt.avg.toFixed(1)} <span style="color:var(--ink-faint)">(${rt.n})</span></span>`:'<span class="mp-rating" style="color:var(--ink-faint)">No reviews yet</span>';
+    const el=document.createElement('div');el.className='mappop';
+    el.innerHTML=`<button class="mp-x" type="button" aria-label="Close">✕</button><div class="mp-name">${esc(nm)}</div><div class="mp-addr">${esc(b.addr)}${b.hood?' · '+esc(b.hood):''}</div><div class="mp-row">${flagHTML(b)}${openLine}${rating}</div><button class="mp-btn" type="button">View details →</button>`;
+    box.appendChild(el);
+    el.querySelector('.mp-x').addEventListener('click',ev=>{ev.stopPropagation();closePop();});
+    el.querySelector('.mp-btn').addEventListener('click',ev=>{ev.stopPropagation();go('building',id);});
+    el.addEventListener('pointerdown',ev=>ev.stopPropagation());
+    popEl=el;repositionPop();
+  }
   _mapz={
     in(){zoomAt(1.6,view.x+view.w/2,view.y+view.h/2);},
     out(){zoomAt(1/1.6,view.x+view.w/2,view.y+view.h/2);},
-    reset(){view.x=0;view.y=0;view.w=W;view.h=H;applyZoom();}
+    reset(){closePop();view.x=0;view.y=0;view.w=W;view.h=H;applyZoom();}
   };
   svg.addEventListener('wheel',e=>{e.preventDefault();const [sx,sy]=toSvg(e.clientX,e.clientY);zoomAt(e.deltaY<0?1.16:1/1.16,sx,sy);},{passive:false});
   const ptrs=new Map();let dragging=false,moved=false,captured=0,lastX=0,lastY=0,pinch=0;
@@ -1599,22 +1645,24 @@ function drawMap(mountId){const mount=$('#'+mountId);if(!mount||!CHI.hoods||!CHI
       // capture the pointer ONLY once a real drag begins — capturing on pointerdown
       // would retarget the click away from the marker and break click-to-open.
       if(!moved&&Math.abs(dx)+Math.abs(dy)>3){moved=true;svg.classList.add('grabbing');try{svg.setPointerCapture(e.pointerId);captured=e.pointerId;}catch(_){}}
-      if(moved){const rc=svg.getBoundingClientRect();view.x=clamp(view.x-dx*view.w/rc.width,0,Math.max(0,W-view.w));view.y=clamp(view.y-dy*view.h/rc.height,0,Math.max(0,H-view.h));lastX=e.clientX;lastY=e.clientY;applyZoom();}}});
+      if(moved){const rc=svg.getBoundingClientRect();view.x=clamp(view.x-dx*view.w/rc.width,0,Math.max(0,W-view.w));view.y=clamp(view.y-dy*view.h/rc.height,0,Math.max(0,H-view.h));lastX=e.clientX;lastY=e.clientY;applyPan();}}});
   function endPtr(e){ptrs.delete(e.pointerId);if(ptrs.size<2)pinch=0;if(ptrs.size===0){dragging=false;svg.classList.remove('grabbing');if(captured){try{svg.releasePointerCapture(captured);}catch(_){}captured=0;}}}
   svg.addEventListener('pointerup',endPtr);svg.addEventListener('pointercancel',endPtr);
-  function openAt(t,cx,cy){ if(!t||t===svg||t.nodeType!==1){t=document.elementFromPoint(cx,cy);} if(!t||!t.closest)return;
-    const dot=t.closest('.bdot'); if(dot){const id=dot.getAttribute('data-id');if(id)go('building',id);return;}
-    const pin=t.closest('.bpin'); if(pin){const id=pin.getAttribute('data-id');if(id)go('building',id);return;}
-    const hp=t.closest('.hoodpath'); if(hp){const h=hp.getAttribute('data-hood');if(h){mapHood=h;render();}}}
+  function openAt(t,cx,cy){ if(!t||t===svg||t.nodeType!==1){t=document.elementFromPoint(cx,cy);} if(!t||!t.closest){closePop();return;}
+    const cl=t.closest('.cluster'); if(cl){closePop();fitTo(+cl.dataset.minx,+cl.dataset.miny,+cl.dataset.maxx,+cl.dataset.maxy);return;}
+    const dot=t.closest('.bdot'); if(dot){const id=dot.getAttribute('data-id');if(id)showPop(id,+dot.getAttribute('cx'),+dot.getAttribute('cy'));return;}
+    const hp=t.closest('.hoodpath'); if(hp){closePop();const h=hp.getAttribute('data-hood');if(h){mapHood=h;render();}return;}
+    closePop(); }
   svg.addEventListener('click',e=>{if(moved){moved=false;return;}openAt(e.target,e.clientX,e.clientY);});
   svg.addEventListener('keydown',e=>{const step=view.w*0.15;let h=true;
     if(e.key==='+'||e.key==='=')zoomAt(1.6,view.x+view.w/2,view.y+view.h/2);
     else if(e.key==='-'||e.key==='_')zoomAt(1/1.6,view.x+view.w/2,view.y+view.h/2);
-    else if(e.key==='0'){view.x=0;view.y=0;view.w=W;view.h=H;applyZoom();}
-    else if(e.key==='ArrowLeft'){view.x=clamp(view.x-step,0,Math.max(0,W-view.w));applyZoom();}
-    else if(e.key==='ArrowRight'){view.x=clamp(view.x+step,0,Math.max(0,W-view.w));applyZoom();}
-    else if(e.key==='ArrowUp'){view.y=clamp(view.y-step,0,Math.max(0,H-view.h));applyZoom();}
-    else if(e.key==='ArrowDown'){view.y=clamp(view.y+step,0,Math.max(0,H-view.h));applyZoom();}
+    else if(e.key==='0'){closePop();view.x=0;view.y=0;view.w=W;view.h=H;applyZoom();}
+    else if(e.key==='ArrowLeft'){view.x=clamp(view.x-step,0,Math.max(0,W-view.w));applyPan();}
+    else if(e.key==='ArrowRight'){view.x=clamp(view.x+step,0,Math.max(0,W-view.w));applyPan();}
+    else if(e.key==='ArrowUp'){view.y=clamp(view.y-step,0,Math.max(0,H-view.h));applyPan();}
+    else if(e.key==='ArrowDown'){view.y=clamp(view.y+step,0,Math.max(0,H-view.h));applyPan();}
+    else if(e.key==='Escape'){closePop();}
     else h=false;
     if(h)e.preventDefault();});
   applyZoom();
